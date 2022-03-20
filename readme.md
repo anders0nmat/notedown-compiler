@@ -30,6 +30,8 @@
 		- [Better table formatting](#better-table-formatting)
 		- [Available command functions](#available-command-functions)
 		- [Collapsible Headings](#collapsible-headings)
+		- [Replace Content](#replace-content)
+		- [Types of Links](#types-of-links)
 
 ## Description
 
@@ -70,6 +72,7 @@ complete - Tested and working (as expected)
   - Element Commands
   - Better Table Formatting
   - Collapsible Headings
+  - Replace Content
 
 ### Headings
 
@@ -282,11 +285,11 @@ Output:
 <a href="google.com" title="Goes to Google">google.com</a>
 ```
 
-You can link to other ids in the document automatically by following the square brackets with a `?`:
+You can link to other ids in the document automatically by following the square brackets with a `#`:
 
 Input:
 ```md
-[Section Two]?()
+[Section Two]#()
 ```
 
 Output:
@@ -312,9 +315,31 @@ Output:
 
 ### Tables
 
+Tables are indicated by a pipe character `|`.
+
+```md
+| first cell | second cell
+| :-- | :--:
+| first entry | second entry
+```
+
 ### Fenced Code Blocks
 
+Similar to Markdown.
+
+````
+```language
+void name(int abc) {
+	if (abc == 2)
+		throw "Prime";
+	return;
+}
+```
+````
+
 ### Footnotes
+
+See [Element Commands](#commands)
 
 ### Heading IDs
 
@@ -322,9 +347,32 @@ See [Element Commands](#commands)
 
 ### Definition Lists
 
+```md
+? Word 1
+  ! Explanation 1
+? Word 2
+? Word 3
+  ! Explanation 2
+? Word 4
+  ! Explanation 3
+  ! Explanation 4
+```
+
 ### Task Lists
 
+Task list syntax as in Markdown
+
+```md
+- [] Unchecked Entry
+- [ ] Unchecked Entry
+- [  ] (Not valid)
+- [x] Checked Entry
+- [X] Checked Entry
+```
+
 ### Emoji
+
+Emoji can be inserted by enclosing their name with `:`. 
 
 ### Highlight
 
@@ -341,15 +389,20 @@ There is something <mark>important</mark> among us.
 
 ### Reference-Style Links
 
+See [Replace Content](#replace-content)
+
 ### Syntax Highlighting
 
 Whoo, this will be quite alot of work
 
 ### Links to Headings
 
-This should already work if you use `#section-id` as a url in a link.
+This should already work if you use `#section-id` as a url in a link. See [Links](#links)
 
 ### HTML Tag support
+
+Although it would be nice to use them in plain text, they can be inserted by command (See [Commands](#commands)).
+Possibly like `[]{$html ul li}` or `{$html /ul}`
 
 ### Admonitions
 
@@ -437,6 +490,8 @@ cOMPLEX tEXT
 
 ### Better table formatting
 
+See [Replace Content](#replace-content)
+
 ### Available command functions
 
 - `insert_toc` : Inserts the table-of-contents
@@ -454,7 +509,7 @@ The second symbol in the opening sequence defines its default state: `+` = open,
 
 Input:
 ```md
-+ # This heading is collapsible +--
++ This heading is collapsible +--
 
 And here is a definition what happens when you do things
 --+
@@ -512,19 +567,47 @@ Text'n'stuff
 </details>
 ```
 
+### Replace Content
 
-*Multiline  
-Italic*
+If it is cumbersome to read long link descriptions in plain text, one can define variables with `%`, followed by a word (containing no spaces). Variable names have to be all-lowercase and contain no spaces. In that regard they are trated like heading ids. If no name is given, the content is used (Links only).
 
-| Hallo | Welt |   | Ha |
-|h | asd | d | asd
--|-|-|-
-Hier | asd | three | a|ad|adw|ds|
+To Insert Content into any element one can use sharp brackets `<%name>`, optionally with content to show if the name definition is not found `[Not found]<%name>`
 
+They dont work in plain Text though. They only work in combination with Links of any kind or Commands.
 
-[Section]()
+Input:
+```md
+I dont want to link to [Wikipedia](%wiki) right now.
 
-> Hallo Welt Hier 
-> > asd
-> 
-> asd
+But fast things like [Web Search](%) are okay.
+
+This sentence is finished [%3]
+
+Imagine content that will be defined [in the future]{%1}
+
+%(wiki): wikipedia.org :"The knowledge database of humanity"
+%(web-search): google.com
+%{1}: >color:red
+%<name>
+```
+
+Output:
+```html
+I dont want to link to <a href="wikipedia.org" 
+title="The knowledge database of humanity">Wikipedia</a> right now.
+
+<p>
+Imagine content that will be defined <span style="color:red">in the future</span>
+</p>
+```
+
+### Types of Links
+
+```md
+[URL Links](google.com :"With optional Description")
+[Images]!(/img/cat.png :Cute)
+[Footnotes]^("optional text" :"And description")
+[Headings]#(:"With description")
+[Replace-Content]<%name>
+[Commands]{}
+```

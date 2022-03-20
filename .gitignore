@@ -1,5 +1,5 @@
 /.vscode
 /AST.json
-/main.exe
+/*.exe
 /stringUtils.hpp
 /templateType.hpp
