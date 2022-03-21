@@ -128,10 +128,12 @@ std::string BlockquoteHandler::triggerChars() {
 
 bool BlockquoteHandler::canHandle(Parser * lex) {
 	if (content != nullptr)
-		return (lex->lastToken == tokSym) &&
+		return (canHandleBlock(lex) && (indentStyle == ' ' || indentStyle == 0)) ||
+			(indentStyle == '>' || indentStyle == 0) &&
+			((lex->lastToken == tokSym) &&
 			(lex->lastString.front() == '>') && 
 			(lex->lastInt == (centered ? 2 : 1)) && 
-			(lex->peektok() == tokSpace || lex->peektok() == tokNewline);
+			(lex->peektok() == tokSpace || lex->peektok() == tokNewline));
 
 	return (lex->lastToken == tokSym) &&
 		(lex->lastString.front() == '>') && 
@@ -140,30 +142,106 @@ bool BlockquoteHandler::canHandle(Parser * lex) {
 }
 
 std::tuple<std::unique_ptr<_ASTElement>, bool> BlockquoteHandler::handle(Parser * lex) {
+	if (content != nullptr && indentStyle == 0)
+		indentStyle = lex->lastString.front();
+	
 	if (content == nullptr) {
 		content = std::make_unique<ASTBlockquote>(lex->lastInt > 1);
 		centered = lex->lastInt > 1;
 	}
-	lex->gettok(); // Consume >
-	if (lex->lastToken == tokSpace)
-		lex->gettok(); // Consume space
-	// Else dont consume newline, parseLine will take care of that
-	std::unique_ptr<_ASTElement> e;
-	bool redo;
-	do {
-		std::tie(e, redo) = lex->parseLine(handler);
-		content->addElement(e);
-	} while (redo);
+
+	if (lex->lastToken == tokSpace) {
+		// Indent Block
+		handleBlock(lex);
+	}
+	else {
+		// '>' Block
+		lex->gettok(); // Consume >
+		if (lex->lastToken == tokSpace)	
+			lex->gettok(); // Consume space
+
+		// Else dont consume newline, parseLine will take care of that
+		std::unique_ptr<_ASTElement> e;
+		bool redo;
+		do {
+			std::tie(e, redo) = lex->parseLine(handler);
+			content->addElement(e);
+		} while (redo);
+	}
+
 	return std::make_tuple(nullptr, false);
 }
 
 std::unique_ptr<_ASTElement> BlockquoteHandler::finish(Parser * lex) {
-	if (handler != nullptr) {
-		std::unique_ptr<_ASTElement> e = std::move(handler->finish(lex));
-		content->addElement(e);
-	}
+	// if (handler != nullptr) {
+	// 	std::unique_ptr<_ASTElement> e = std::move(handler->finish(lex));
+	// 	content->addElement(e);
+	// }
+	finishBlock(lex);
 	return std::move(content);
 }
+
+// ----- UnorderedListHandler ----- \\ 
+
+std::unique_ptr<ParserHandler> UnorderedListHandler::createNew() {
+	return std::make_unique<UnorderedListHandler>();
+}
+
+std::string UnorderedListHandler::triggerChars() {
+	return "-";
+}
+
+bool UnorderedListHandler::canHandle(Parser * lex) {
+	return canHandleBlock(lex) ||
+		((lex->lastToken == tokSym) &&
+		(lex->lastString.front() == '-') && 
+		(lex->lastInt == 1) && 
+		(lex->peektok() == tokSpace || lex->peektok() == tokNewline));
+}
+
+std::tuple<std::unique_ptr<_ASTElement>, bool> UnorderedListHandler::handle(Parser * lex) {
+	if (list == nullptr) {
+		// Create List
+		list = std::make_unique<ASTUnorderedList>();
+	}
+
+	if (lex->lastToken == tokSpace) {
+		// Indent Block
+		handleBlock(lex);
+	}
+	else {
+		// '-' Block
+		if (handler != nullptr)
+			content->addElement(handler->finish(lex));
+		if (content != nullptr)
+			list->addElement(content);
+
+		// Either way, new Element started
+		content = std::make_unique<ASTListElement>();
+
+		lex->gettok(); // Consume -
+		if (lex->lastToken == tokSpace)	
+			lex->gettok(); // Consume space
+
+		// Else dont consume newline, parseLine will take care of that
+		std::unique_ptr<_ASTElement> e;
+		bool redo;
+		do {
+			std::tie(e, redo) = lex->parseLine(handler);
+			content->addElement(e);
+		} while (redo);
+	}
+
+	return std::make_tuple(nullptr, false);
+}
+
+std::unique_ptr<_ASTElement> UnorderedListHandler::finish(Parser * lex) {
+	finishBlock(lex);
+	if (list != nullptr)
+		list->addElement(content);
+	return std::move(list);
+}
+
 
 // ----- InlineTemplateHandler ----- \\ 
 

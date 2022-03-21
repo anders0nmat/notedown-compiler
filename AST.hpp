@@ -278,7 +278,6 @@ public:
 
 };
 
-
 /*
 	Represents a Paragraph
 */
@@ -288,7 +287,6 @@ protected:
 	std::string className() {return "ASTParagraph";}
 
 public:
-
 
 };
 
@@ -323,3 +321,29 @@ public:
 		return obj;
 	}
 };
+
+/*
+	Represents Unordered and Ordered List Element
+*/
+class ASTListElement : public _ASTBlockElement {
+protected:
+
+	std::string className() {return "ASTListElement";}
+
+public:
+
+};
+
+/*
+	Represents Unordered Lists
+*/
+class ASTUnorderedList : public _ASTListElement<ASTListElement> {
+protected:
+
+	std::string className() {return "ASTUnorderedList";}
+
+public:
+
+};
+
+

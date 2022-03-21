@@ -75,9 +75,10 @@
 	I_italic : Prints text of Syntax "/" <Text> "/" as italic text
 */
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
 	Parser parser("example.nd");
 
+	parser.addHandler("H_ulist", std::make_unique<UnorderedListHandler>());
 	parser.addHandler("H_heading", std::make_unique<HeadingHandler>());
 	parser.addHandler("H_blockquote", std::make_unique<BlockquoteHandler>());
 	parser.addHandler("H_hline", std::make_unique<HLineHandler>());
