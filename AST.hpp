@@ -33,58 +33,52 @@ public:
 };
 
 /*
-	Holds all elements of a file
+	Container for list-based objects
 */
-class ASTDocument : public _ASTElement {
+template<class cl>
+class _ASTListElement : virtual public _ASTElement {
 protected:
 
-	std::vector<std::unique_ptr<_ASTElement>> elements;
+	std::vector<std::unique_ptr<cl>> elements;
 
-	std::string className() {return "ASTDocument";}
+	std::string className() {return "_ASTListElement";}
 
 public:
 
-	ASTDocument() {}
-
-	ASTDocument(std::vector<std::unique_ptr<_ASTElement>> & elements) {
-		addElements(elements);
-	}
-
-	void addElement(std::unique_ptr<_ASTElement> & element) {
+	virtual void addElement(std::unique_ptr<cl> & element) {
 		if (element != nullptr)
 			elements.push_back(std::move(element));
 	}
 
-	void addElements(std::vector<std::unique_ptr<_ASTElement>> & list) {
-		elements.clear();
-		elements.reserve(list.size());
-		for (auto & e : list) {
-			addElement(e);
-		}
+	virtual void prependElement(std::unique_ptr<cl> & element) {
+		if (element != nullptr)
+			elements.insert(elements.begin(), std::move(element));
 	}
 
-	size_t size() {
+	virtual void addElement(std::unique_ptr<cl> && element) {
+		if (element != nullptr)
+			elements.push_back(std::move(element));
+	}
+
+	virtual void prependElement(std::unique_ptr<cl> && element) {
+		if (element != nullptr)
+			elements.insert(elements.begin(), std::move(element));
+	}
+
+
+	virtual size_t size() {
 		return elements.size();
 	}
 
-	std::unique_ptr<_ASTElement> & front() {
+	virtual std::unique_ptr<cl> & front() {
 		return elements.front();
 	}
 
-	void prependElement(std::unique_ptr<_ASTElement> & element) {
-		elements.insert(elements.begin(), std::move(element));
+	virtual std::unique_ptr<cl> & back() {
+		return elements.back();
 	}
 
-	std::string toString(std::string prefix) {
-		std::string result = prefix + className() + "\n" +
-			prefix + "  -elements (" + std::to_string(elements.size()) + "):";
-		for (auto & e : elements) {
-			result += "\n" + e->toString(prefix + "    ");
-		}
-		return result;
-	}
-
-	std::string toJson() {
+	std::string toJson() override {
 		std::string obj = "{\"class\": \"" + className() + "\",";
 		obj += "\"elements\": [";
 
@@ -97,6 +91,7 @@ public:
 		obj += "]}";
 		return obj;
 	}
+
 };
 
 
@@ -108,7 +103,7 @@ public:
 /*
 	Inline text template. Everything that can occure in plain Text should inherit from this class
 */
-class _ASTInlineElement : public _ASTElement {
+class _ASTInlineElement : virtual public _ASTElement {
 
 	std::string className() {return "_ASTInlineElement";}
 
@@ -119,81 +114,15 @@ public:
 /*
 	Represents Inline Text. Combines multiple ASTInlineElements to allow inline-styling
 */
-class ASTInlineText : public _ASTInlineElement {
+class ASTInlineText : public _ASTInlineElement, public _ASTListElement<_ASTInlineElement> {
 protected:
-
-	std::vector<std::unique_ptr<_ASTInlineElement>> elements;
 
 	std::string className() {return "ASTInlineText";}
 
 public:
 
-	ASTInlineText() {}
-
-	ASTInlineText(std::vector<std::unique_ptr<_ASTInlineElement>> & elements) {
-		addElements(elements);
-	}
-
-	ASTInlineText(std::vector<std::unique_ptr<ASTInlineText>> & elements) {
-		addElements(elements);
-	}
-
-	void addElement(std::unique_ptr<_ASTInlineElement> && element) {
-		if (element != nullptr)
-			elements.push_back(std::move(element));
-	}
-
-	void addElements(std::vector<std::unique_ptr<_ASTInlineElement>> & list) {
-		elements.clear();
-		elements.reserve(list.size());
-		for (auto & e : list) {
-			if (e != nullptr)
-				elements.push_back(std::move(e));
-		}
-	}
-
-	void addElements(std::vector<std::unique_ptr<ASTInlineText>> & list) {
-		elements.clear();
-		elements.reserve(list.size());
-		for (auto & e : list) {
-			if (e != nullptr)
-				elements.push_back(std::move(e));
-		}
-	}
-
-	size_t size() {
-		return elements.size();
-	}
-
-	std::unique_ptr<_ASTInlineElement> & front() {
-		return elements.front();
-	}
-
-	void prependElement(std::unique_ptr<_ASTInlineElement>  element) {
-		elements.insert(elements.begin(), std::move(element));
-	}
-
-	std::string toString(std::string prefix) {
-		std::string result = prefix + className() + "\n" +
-			prefix + "  -elements (" + std::to_string(elements.size()) + "):";
-		for (auto & e : elements) {
-			result += "\n" + e->toString(prefix + "    ");
-		}
-		return result;
-	}
-
-	std::string toJson() {
-		std::string obj = "{\"class\": \"" + className() + "\",";
-		obj += "\"elements\": [";
-
-		for (auto & e : elements) {
-			obj += e->toJson() + ",";
-		}
-
-		obj.erase(std::prev(obj.end()));
-
-		obj += "]}";
-		return obj;
+	std::string toJson() override {
+		return _ASTListElement<_ASTInlineElement>::toJson();
 	}
 };
 
@@ -292,64 +221,21 @@ public:
 
 
 /*
-	Multiline text template. Everything that can span multiple lines should inherit from this class
+	Base for all document-like elements, so multiline, multi-element structures
 */
-class _ASTMultilineElement : public _ASTElement {
+typedef _ASTListElement<_ASTElement> _ASTBlockElement;
+
+/*
+	Holds all elements of a file
+*/
+class ASTDocument : public _ASTBlockElement {
 protected:
 
-	std::string className() {return "_ASTInlineElement";}
-
-	std::vector<std::unique_ptr<ASTInlineText>> elements;
+	std::string className() {return "ASTDocument";}
 
 public:
 
-	_ASTMultilineElement() {}
-
-	_ASTMultilineElement(std::vector<std::unique_ptr<ASTInlineText>> & elements) {
-		addElements(elements);
-	}
-
-	void addElement(std::unique_ptr<ASTInlineText> && element) {
-		if (element != nullptr)
-			elements.push_back(std::move(element));
-	}
-
-	void addElements(std::vector<std::unique_ptr<ASTInlineText>> & list) {
-		elements.clear();
-		elements.reserve(list.size());
-		for (auto & e : list) {
-			addElement(std::move(e));
-		}
-	}
-
-	size_t size() {
-		return elements.size();
-	}
-
-	std::string toString(std::string prefix) {
-		std::string result = prefix + className() + "\n" +
-			prefix + "  -elements (" + std::to_string(elements.size()) + "):";
-		for (auto & e : elements) {
-			result += "\n" + e->toString(prefix + "    ");
-		}
-		return result;
-	}
-
-	std::string toJson() {
-		std::string obj = "{\"class\": \"" + className() + "\",";
-		obj += "\"elements\": [";
-
-		for (auto & e : elements) {
-			obj += e->toJson() + ",";
-		}
-
-		obj.erase(std::prev(obj.end()));
-
-		obj += "]}";
-		return obj;
-	}
 };
-
 
 /*
 	Represents Headings
@@ -366,12 +252,6 @@ protected:
 public:
 
 	ASTHeading(int level, std::unique_ptr<ASTInlineText> content) : level(level), content(std::move(content)) {}
-
-	std::string toString(std::string prefix) override {
-		return prefix + className() + "\n" +
-			prefix + "  -text:" + "\n" + 
-			content->toString(prefix + "  ");
-	}
 
 	std::string toJson() {
 		std::string obj = "{\"class\": \"" + className() + "\",";
@@ -396,23 +276,13 @@ protected:
 
 public:
 
-	ASTHLine() {}
-
-	std::string toString(std::string prefix) override {
-		return prefix + className();
-	}
-
-	std::string toJson() {
-		return "{\"class\": \"" + className() + "\"}";
-	}
-
 };
 
 
 /*
 	Represents a Paragraph
 */
-class ASTParagraph : public _ASTMultilineElement {
+class ASTParagraph : public _ASTBlockElement {
 protected:
 
 	std::string className() {return "ASTParagraph";}
@@ -424,9 +294,8 @@ public:
 
 /*
 	Represents a Blockquote. Everything should be blockquotable
-	TODO : To make everything blockquotable, files must be parsable by line
 */
-class ASTBlockquote : public ASTDocument {
+class ASTBlockquote : public _ASTBlockElement {
 protected:
 
 	std::string className() {return "ASTBlockquote";}

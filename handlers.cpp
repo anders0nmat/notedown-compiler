@@ -167,52 +167,52 @@ std::unique_ptr<_ASTElement> BlockquoteHandler::finish(Parser * lex) {
 
 // ----- InlineTemplateHandler ----- \\ 
 
-template<char indicator>
-std::unique_ptr<InlineHandler> InlineTemplateHandler<indicator>::createNew() {
-	return std::make_unique<InlineTemplateHandler<indicator>>();
-}
+// template<char indicator>
+// std::unique_ptr<InlineHandler> InlineTemplateHandler<indicator>::createNew() {
+// 	return std::make_unique<InlineTemplateHandler<indicator>>();
+// }
 
-template<char indicator>
-std::string InlineTemplateHandler<indicator>::triggerChars() {
-	return std::string(1, indicator);
-}
+// template<char indicator>
+// std::string InlineTemplateHandler<indicator>::triggerChars() {
+// 	return std::string(1, indicator);
+// }
 
-template<char indicator>
-bool InlineTemplateHandler<indicator>::canHandle(Parser * lex) {
-	return (lex->lastToken == tokInlineSym) &&
-		(lex->lastString.front() == indicator) &&
-		(lex->peektok() != tokSpace) && (lex->peektok() != tokNewline);
-}
+// template<char indicator>
+// bool InlineTemplateHandler<indicator>::canHandle(Parser * lex) {
+// 	return (lex->lastToken == tokInlineSym) &&
+// 		(lex->lastString.front() == indicator) &&
+// 		(lex->peektok() != tokSpace) && (lex->peektok() != tokNewline);
+// }
 
-template<char indicator>
-std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineTemplateHandler<indicator>::handle(Parser * lex) {
+// template<char indicator>
+// std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineTemplateHandler<indicator>::handle(Parser * lex) {
 	
-	// If there are no indicators left open, e.g. **** -> *<firstContent>**<secondContent>*
-	if (lex->lastInt % 2 == 0)
-		return std::make_tuple(nullptr, true);
+// 	// If there are no indicators left open, e.g. **** -> *<firstContent>**<secondContent>*
+// 	if (lex->lastInt % 2 == 0)
+// 		return std::make_tuple(nullptr, true);
 
-	lex->gettok(); // Consume opening indicator
-	std::unique_ptr<ASTInlineText> content;
-	bool endOfLine;
-	std::tie(content, endOfLine) = lex->parseText(false, true, indicator);
+// 	lex->gettok(); // Consume opening indicator
+// 	std::unique_ptr<ASTInlineText> content;
+// 	bool endOfLine;
+// 	std::tie(content, endOfLine) = lex->parseText(false, true, indicator);
 	
-	if (!endOfLine) {
-		// Ended on indicator
-		lex->gettok(); // Consume closing indicator
-		if (content != nullptr)
-			return std::make_tuple(std::make_unique<ASTTextModification>(indicator, std::move(content)), true);
-		return std::make_tuple(nullptr, true);
-	}
+// 	if (!endOfLine) {
+// 		// Ended on indicator
+// 		lex->gettok(); // Consume closing indicator
+// 		if (content != nullptr)
+// 			return std::make_tuple(std::make_unique<ASTTextModification>(indicator, std::move(content)), true);
+// 		return std::make_tuple(nullptr, true);
+// 	}
 
-	content->prependElement(std::make_unique<ASTPlainText>(1, indicator));
+// 	content->prependElement(std::make_unique<ASTPlainText>(1, indicator));
 
-	return std::make_tuple(std::move(content), true);
-}
+// 	return std::make_tuple(std::move(content), true);
+// }
 
-template<char indicator>
-std::unique_ptr<_ASTElement> InlineTemplateHandler<indicator>::finish(Parser * lex) {
-	return nullptr;
-}
+// template<char indicator>
+// std::unique_ptr<_ASTElement> InlineTemplateHandler<indicator>::finish(Parser * lex) {
+// 	return nullptr;
+// }
 
 // -----  ----- \\ 
 
