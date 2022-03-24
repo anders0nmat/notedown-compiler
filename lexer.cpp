@@ -161,9 +161,11 @@ std::tuple<std::string, bool> Parser::extractText(bool allowRange, std::string d
 	// Next Char is delimiter or Newline or EOF
 	if (_lastChar == '\n' && input.eof())
 		return make_tuple("", true);
+
 	return make_tuple(result, false);
 
-	gettok(); // Reload Token System
+	//gettok(); // Reload Token System
+	//return make_tuple("", true);
 }
 
 unique_ptr<ParserHandler> Parser::findNextHandler() {

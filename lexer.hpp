@@ -89,7 +89,7 @@ public:
 		@param allowInlineStyling Whether other inline styling elements are allowed. Printed as literal text
 		@param inlineSymReturn Returns if this Inline-Sym occures
 		@param symReturn Returns if this Sym occures
-		@returns If second parameter is true, it ended on linebreak. If False it ended on inlineSymReturn, symReturn or unknown Symbol (Only if unknownAsText == true)
+		@returns If second parameter is true, it ended on linebreak. If False it ended on symReturn or unknown Symbol (Only if unknownAsText == false)
 	*/
 	std::tuple<std::unique_ptr<ASTInlineText>, bool> parseText(
 		bool allowLb = true, bool unknownAsText = true, bool allowInlineStyling = true, int symReturn = 0);

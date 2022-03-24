@@ -319,6 +319,97 @@ std::unique_ptr<_ASTElement> OrderedListHandler::finish(Parser * lex) {
 
 #pragma endregion OrderedListHandler
 
+#pragma region CodeHandler
+// ----- CodeHandler ----- \\ 
+
+std::unique_ptr<ParserHandler> CodeHandler::createNew() {
+	return std::make_unique<CodeHandler>();
+}
+
+std::string CodeHandler::triggerChars() {
+	return "`";
+}
+
+bool CodeHandler::canHandle(Parser * lex) {
+	if (fenceCount != 0)
+		return true;
+	return 
+		(lex->lastToken == tokSym) && 
+		(lex->lastString[0] == '`') &&
+		(lex->lastInt >= 3);
+}
+
+std::tuple<std::unique_ptr<_ASTElement>, bool> CodeHandler::handle(Parser * lex) {
+	if (fenceCount == 0) {
+		// Remove Spaces in front
+		while (lex->lastToken == tokSpace) 
+			lex->gettok(); // Eat Space
+		fenceCount = lex->lastInt;
+		lex->gettok(); // Eat ```
+		lang = (lex->lastToken == tokText) ? lex->lastString : "";
+		if (lang != "")
+			lex->gettok(); // Eat Language Name
+		while (lex->lastToken == tokSpace)
+			lex->gettok(); // Consume Space
+		std::tie(firstLine, std::ignore) = lex->parseText(false);
+		lex->gettok(); // Eat Newline
+		return std::make_tuple(nullptr, false);
+	}
+
+	std::unique_ptr<ASTInlineText> line, e;
+	// std::unique_ptr<_ASTInlineElement> e;
+	bool eol;
+
+	do {
+		std::tie(e, eol) = lex->parseText(false, true, false, '`');
+		
+		if (!eol) {
+			// Possibly ended
+			if (lex->lastInt == fenceCount && (lex->peektok() == tokNewline || lex->peektok() == tokEOF)) {
+				// Block ended
+				lex->gettok(); // Consume ```
+				lex->gettok(); // Consume Newline
+				content.push_back(std::move(e));
+				std::unique_ptr<ASTCodeBlock> code = std::make_unique<ASTCodeBlock>(lang);
+				for (auto & e : content)
+					code->addElement(std::move(e));
+				return std::make_tuple(std::move(code), true);
+			}
+			else {
+				// Treat as regular text
+				if (line == nullptr)
+					line = std::move(e);
+				else
+					line->addElement(std::move(e));
+				
+				line->addElement(std::make_unique<ASTPlainText>(lex->lastInt, '`'));
+				lex->gettok(); // Consume `
+			}
+		}
+		else {
+			lex->gettok(); // Consume Newline
+			if (e == nullptr)
+				e = std::make_unique<ASTInlineText>(); // Empty Lines are taken seriously
+			if (line == nullptr)
+				line = std::move(e);
+			else
+				line->addElement(std::move(e));
+		}
+	} while (!eol);
+
+	content.push_back(std::move(line));
+	// Dont finish, dont return anything
+	return std::make_tuple(nullptr, false);
+}
+
+std::unique_ptr<_ASTElement> CodeHandler::finish(Parser * lex) {
+	std::unique_ptr<ASTParagraph> p = std::make_unique<ASTParagraph>();
+	for (auto & e : content)
+		p->addElement(std::move(e));
+	return std::move(p);
+}
+
+#pragma endregion
 
 // ----- InlineTemplateHandler ----- \\ 
 

@@ -150,3 +150,25 @@ public:
 	std::unique_ptr<_ASTElement> finish(Parser * lex) override;
 };
 
+class CodeHandler : public ParserHandler {
+protected:
+	
+	std::vector<std::unique_ptr<_ASTInlineElement>> content;
+	int fenceCount = 0;
+	std::string lang;
+	std::unique_ptr<ASTInlineText> firstLine;
+
+public:
+
+	CodeHandler() {}
+
+	std::unique_ptr<ParserHandler> createNew() override;
+
+	std::string triggerChars() override;
+
+	bool canHandle(Parser * lex) override;
+
+	std::tuple<std::unique_ptr<_ASTElement>, bool> handle(Parser * lex) override;
+
+	std::unique_ptr<_ASTElement> finish(Parser * lex) override;
+};

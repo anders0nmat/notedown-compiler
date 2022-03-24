@@ -56,12 +56,12 @@ complete - Tested and working (as expected)
   - Images
 - Extended Markdown Features
   - Tables
-  - Fenced Code Blocks
+  - Fenced Code Blocks (untested)
   - Footnotes
   - Heading IDs
   - Definition List
   - Task List
-  - Emoji
+  - Emoji (30%)
   - Highlight (untested)
   - Reference-Style Links
   - Syntax Highlighting
@@ -606,8 +606,22 @@ Imagine content that will be defined <span style="color:red">in the future</span
 ```md
 [URL Links](google.com :"With optional Description")
 [Images]!(/img/cat.png :Cute)
-[Footnotes]^("optional text" :"And description")
+[optional text]^(id :"And description")
 [Headings]#(:"With description")
 [Replace-Content]<%name>
 [Commands]{}
+
+[Later Definition](%later) 
+[]^(id)
+
+^id: There is some Text here to see
+  With indentation we can even add multiple lines
+
+%(later): example.com :"Go to website"
+%<name>: Well here we can write text
+  that will be placed instead of the repalce-content
+
+  There is endless possibility with this but be aware
+  that not all of them will look good or even work in all circumstances
+
 ```

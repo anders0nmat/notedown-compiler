@@ -83,15 +83,17 @@ int main(int argc, char *argv[]) {
 	parser.addHandler("H_heading", std::make_unique<HeadingHandler>());
 	parser.addHandler("H_blockquote", std::make_unique<BlockquoteHandler>());
 	parser.addHandler("H_hline", std::make_unique<HLineHandler>());
+	parser.addHandler("H_code", std::make_unique<CodeHandler>());
+	
 
 	parser.addInlineHandler("I_bold", std::make_unique<InlineTemplateHandler<'*'>>());
 	parser.addInlineHandler("I_italic", std::make_unique<InlineTemplateHandler<'/'>>());
 	parser.addInlineHandler("I_underlined", std::make_unique<InlineTemplateHandler<'_'>>());
 	parser.addInlineHandler("I_strikethrough", std::make_unique<InlineTemplateHandler<'~'>>());
 	parser.addInlineHandler("I_highlight", std::make_unique<InlineTemplateHandler<'='>>());
-	
-	// TODO : Needs Rework, inside Code Blocks, other inline styling does not apply
-	// parser.addInlineHandler("I_code", std::make_unique<InlineTemplateHandler<'`'>>());
+
+	parser.addInlineHandler("I_emoji", std::make_unique<InlineSmileyHandler>());
+
 	parser.addInlineHandler("I_code", std::make_unique<InlineCodeHandler>());
 
 

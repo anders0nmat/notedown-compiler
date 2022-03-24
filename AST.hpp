@@ -60,6 +60,12 @@ public:
 			elements.push_back(std::move(element));
 	}
 
+	virtual void addElements(std::vector<std::unique_ptr<cl>> && elements) {
+		for (auto & e : elements) {
+			addElement(e);
+		}
+	}
+
 	virtual void prependElement(std::unique_ptr<cl> && element) {
 		if (element != nullptr)
 			elements.insert(elements.begin(), std::move(element));
@@ -110,6 +116,10 @@ class _ASTInlineElement : virtual public _ASTElement {
 
 public:
 
+	virtual std::string literalText() {
+		return "";
+	}
+
 };
 
 /*
@@ -121,6 +131,13 @@ protected:
 	std::string className() {return "ASTInlineText";}
 
 public:
+
+	std::string literalText() override {
+		std::string res;
+		for (auto & e : elements)
+			res += e->literalText();
+		return res;
+	}
 
 	std::string toJson() override {
 		return _ASTListElement<_ASTInlineElement>::toJson();
@@ -144,6 +161,10 @@ public:
 	ASTPlainText(int chr) : content(1, chr) {}
 
 	ASTPlainText(int count, int chr) : content(count, chr) {}
+
+	std::string literalText() override {
+		return content;
+	}
 
 	std::string toString(std::string prefix) {
 		return prefix + className() + "\n" + 
@@ -194,6 +215,10 @@ public:
 	ASTTextModification(char symbol, std::unique_ptr<_ASTInlineElement> element) 
 	: symbol(symbol), content(std::move(element)) {}
 
+	std::string literalText() override {
+		return content->literalText();
+	}
+
 	std::string toString(std::string prefix) {
 		return prefix + className() + "\n" +
 			prefix + "  -symbol: " + symbol + "\n" +
@@ -215,7 +240,31 @@ public:
 
 };
 
+/*
+	Represents an inline emoji. Contains shortcode and converts it via conversion table
+*/
+class ASTEmoji : public _ASTInlineElement {
+protected:
 
+	std::string shortcode;
+
+	std::string className() {return "ASTEmoji";}
+
+public:
+
+	ASTEmoji(const std::string & shortcode) : shortcode(shortcode) {}
+
+	std::string toJson() {
+		std::string obj = "{\"class\": \"" + className() + "\",";
+		obj += "\"shortcode\": \"";
+
+		obj += shortcode;
+
+		obj += "\"}";
+		return obj;
+	}
+
+};
 
 class ASTCommand : public _ASTInlineElement {
 protected:
@@ -244,6 +293,10 @@ public:
 
 	ASTModifier(std::unique_ptr<ASTCommand> command, std::unique_ptr<ASTInlineText> content)
 		: command(std::move(command)), content(std::move(content)) {}
+
+	std::string literalText() override {
+		return content->literalText();
+	}
 
 };
 
@@ -417,5 +470,27 @@ protected:
 	std::string className() {return "ASTOrderedList";}
 
 public:
+
+};
+
+/*
+	Holds code text
+*/
+class ASTCodeBlock : public _ASTBlockElement {
+protected:
+
+	std::string lang;
+
+	std::unique_ptr<ASTInlineText> command;
+
+	std::string className() {return "ASTCodeBlock";}
+
+public:
+
+	ASTCodeBlock(std::string lang) : lang(lang) {}
+
+	void addCommand(std::unique_ptr<ASTInlineText> & e) {
+		command = std::move(e);
+	}
 
 };
