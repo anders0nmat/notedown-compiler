@@ -5,6 +5,7 @@ void Parser::addDefaultHandlers() {
 	
 }
 
+#pragma region ParagraphHandler
 // ----- ParagraphHandler ----- \\ 
 
 std::unique_ptr<ParserHandler> ParagraphHandler::createNew() {
@@ -14,8 +15,7 @@ std::unique_ptr<ParserHandler> ParagraphHandler::createNew() {
 bool ParagraphHandler::canHandle(Parser * lex) {
 	return 
 		(lex->lastToken == tokSpace) || 
-		(lex->lastToken == tokText) || 
-		(lex->lastToken == tokInlineSym);
+		(lex->lastToken == tokText);
 }
 
 std::tuple<std::unique_ptr<_ASTElement>, bool> ParagraphHandler::handle(Parser * lex) {
@@ -46,6 +46,9 @@ std::unique_ptr<_ASTElement> ParagraphHandler::finish(Parser * lex) {
 	return std::move(content);
 }
 
+#pragma endregion ParagraphHandler
+
+#pragma region HeadingHandler
 // ----- HeadingHandler ----- \\ 
 
 std::unique_ptr<ParserHandler> HeadingHandler::createNew() {
@@ -58,7 +61,7 @@ std::string HeadingHandler::triggerChars() {
 
 bool HeadingHandler::canHandle(Parser * lex) {
 	return (lex->lastToken == tokSym) && 
-		(lex->lastString.front() == '#') &&
+		(lex->lastString[0] == '#') &&
 		(lex->lastInt <= 6) &&
 		(lex->peektok() == tokSpace || lex->peektok() == tokNewline);
 }
@@ -89,6 +92,9 @@ std::unique_ptr<_ASTElement> HeadingHandler::finish(Parser * lex) {
 	return nullptr;
 }
 
+#pragma endregion HeadingHandler
+
+#pragma region HLineHandler
 // ----- HLineHandler ----- \\ 
 
 std::unique_ptr<ParserHandler> HLineHandler::createNew() {
@@ -101,7 +107,7 @@ std::string HLineHandler::triggerChars() {
 
 bool HLineHandler::canHandle(Parser * lex) {
 	return (lex->lastToken == tokSym) && 
-		(lex->lastString.front() == '-') &&
+		(lex->lastString[0] == '-') &&
 		(lex->lastInt >= 3) &&
 		(lex->peektok() == tokNewline);
 }
@@ -116,6 +122,9 @@ std::unique_ptr<_ASTElement> HLineHandler::finish(Parser * lex) {
 	return nullptr;
 }
 
+#pragma endregion HLineHandler
+
+#pragma region BlockquoteHandler
 // ----- BlockquoteHandler ----- \\ 
 
 std::unique_ptr<ParserHandler> BlockquoteHandler::createNew() {
@@ -131,19 +140,19 @@ bool BlockquoteHandler::canHandle(Parser * lex) {
 		return (canHandleBlock(lex) && (indentStyle == ' ' || indentStyle == 0)) ||
 			(indentStyle == '>' || indentStyle == 0) &&
 			((lex->lastToken == tokSym) &&
-			(lex->lastString.front() == '>') && 
+			(lex->lastString[0] == '>') && 
 			(lex->lastInt == (centered ? 2 : 1)) && 
 			(lex->peektok() == tokSpace || lex->peektok() == tokNewline));
 
 	return (lex->lastToken == tokSym) &&
-		(lex->lastString.front() == '>') && 
+		(lex->lastString[0] == '>') && 
 		(lex->lastInt <= 2) && 
 		(lex->peektok() == tokSpace || lex->peektok() == tokNewline);
 }
 
 std::tuple<std::unique_ptr<_ASTElement>, bool> BlockquoteHandler::handle(Parser * lex) {
 	if (content != nullptr && indentStyle == 0)
-		indentStyle = lex->lastString.front();
+		indentStyle = lex->lastString[0];
 	
 	if (content == nullptr) {
 		content = std::make_unique<ASTBlockquote>(lex->lastInt > 1);
@@ -181,6 +190,9 @@ std::unique_ptr<_ASTElement> BlockquoteHandler::finish(Parser * lex) {
 	return std::move(content);
 }
 
+#pragma endregion BlockquoteHandler
+
+#pragma region UnorderedListHandler
 // ----- UnorderedListHandler ----- \\ 
 
 std::unique_ptr<ParserHandler> UnorderedListHandler::createNew() {
@@ -194,7 +206,7 @@ std::string UnorderedListHandler::triggerChars() {
 bool UnorderedListHandler::canHandle(Parser * lex) {
 	return canHandleBlock(lex) ||
 		((lex->lastToken == tokSym) &&
-		(lex->lastString.front() == '-') && 
+		(lex->lastString[0] == '-') && 
 		(lex->lastInt == 1) && 
 		(lex->peektok() == tokSpace || lex->peektok() == tokNewline));
 }
@@ -242,6 +254,9 @@ std::unique_ptr<_ASTElement> UnorderedListHandler::finish(Parser * lex) {
 	return std::move(list);
 }
 
+#pragma endregion UnorderedListHandler
+
+#pragma region OrderedListHandler
 // ----- OrderedListHandler ----- \\ 
 
 std::unique_ptr<ParserHandler> OrderedListHandler::createNew() {
@@ -255,7 +270,7 @@ std::string OrderedListHandler::triggerChars() {
 bool OrderedListHandler::canHandle(Parser * lex) {
 	return canHandleBlock(lex) ||
 		((lex->lastToken == tokNumber) &&
-		(lex->lastString.back() == '.') &&
+		(lex->lastString[lex->lastString.length()] == '.') &&
 		(lex->peektok() == tokSpace || lex->peektok() == tokNewline));
 }
 
@@ -301,6 +316,8 @@ std::unique_ptr<_ASTElement> OrderedListHandler::finish(Parser * lex) {
 		list->addElement(content);
 	return std::move(list);
 }
+
+#pragma endregion OrderedListHandler
 
 
 // ----- InlineTemplateHandler ----- \\ 

@@ -3,6 +3,7 @@
 #include <fstream>
 #include <unordered_map>
 #include <tuple>
+#include <unordered_set>
 
 #include "AST.hpp"
 
@@ -13,8 +14,7 @@ enum Token : int {
 	tokNumber = -3, // lastInt contains number, lastString contains string read (reads <Number>.)
 	tokSpace = -4, // lastString contains ' ', lastInt contains amount of spaces
 	tokNewline = -5, // Newline Character read (\n)
-	tokInlineSym = -6, // indicates inline formatting, lastString contains Symbol, lastInt contains amount
-	tokSym = -7, // Indicates other formatting Symbol, lastString contains it, lastInt contains amount
+	tokSym = -6, // Indicates formatting Symbol, lastString contains it, lastInt contains amount
 };
 
 class ParserHandler;
@@ -29,11 +29,11 @@ protected:
 
 	std::unordered_map<std::string, size_t> handlerAlias;
 	std::vector<std::unique_ptr<ParserHandler>> handlerList;
-	std::string symbols = "";
+
+	std::unordered_set<int> symbols;
 
 	std::unordered_map<std::string, size_t> inlineHandlerAlias;
 	std::vector<std::unique_ptr<InlineHandler>> inlineHandlerList;
-	std::string inlineSymbols = "";
 
 	std::unique_ptr<ParserHandler> _lastHandler = nullptr;
 	std::unique_ptr<ASTDocument> document = nullptr;
@@ -44,6 +44,8 @@ protected:
 	std::unique_ptr<_ASTInlineElement> _parseLine(bool allowLb = true);
 
 	void puttok();
+
+	void addSymbols(std::string str);
 
 public:
 
@@ -90,7 +92,7 @@ public:
 		@returns If second parameter is true, it ended on linebreak. If False it ended on inlineSymReturn, symReturn or unknown Symbol (Only if unknownAsText == true)
 	*/
 	std::tuple<std::unique_ptr<ASTInlineText>, bool> parseText(
-		bool allowLb = true, bool unknownAsText = true, bool allowInlineStyling = true, int inlineSymReturn = 0, int symReturn = 0);
+		bool allowLb = true, bool unknownAsText = true, bool allowInlineStyling = true, int symReturn = 0);
 
 	// std::tuple<std::unique_ptr<ASTInlineText>, bool> parseText(allowLb, unknownAsText, allowInlineStyling, inlineSymReturn, symReturn)
 

@@ -18,8 +18,8 @@ public:
 	}
 
 	bool canHandle(Parser * lex) {
-		return (lex->lastToken == tokInlineSym) &&
-			(lex->lastString.front() == indicator) &&
+		return (lex->lastToken == tokSym) &&
+			(lex->lastString[0] == indicator) &&
 			(lex->peektok() != tokSpace) && (lex->peektok() != tokNewline);
 	}
 
@@ -68,8 +68,8 @@ public:
 	}
 
 	bool canHandle(Parser * lex) {
-		return (lex->lastToken == tokInlineSym) &&
-			(lex->lastString.front() == '`') &&
+		return (lex->lastToken == tokSym) &&
+			(lex->lastString[0] == '`') &&
 			(lex->peektok() != tokSpace) && (lex->peektok() != tokNewline);
 	}
 

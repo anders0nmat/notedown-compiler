@@ -20,11 +20,8 @@ Parser::Parser(string filename) {
 Token Parser::peektok(int chr) {
 	if (input.eof()) return tokEOF;
 
-	if (symbols.find_first_of(chr) != std::string::npos)
+	if (symbols.count(chr) == 1)
 		return tokSym;
-
-	if (inlineSymbols.find_first_of(chr) != std::string::npos)
-		return tokInlineSym;
 
 	if (isdigit(chr))
 		return tokNumber;
@@ -70,7 +67,6 @@ Token Parser::gettok() {
 		lastInt = std::stoi(lastString);
 		return lastToken;
 	case tokSpace:
-	case tokInlineSym:
 	case tokSym:
 		lastInt = 1;
 		lastString = _lastChar;
@@ -109,7 +105,6 @@ void Parser::puttok() {
 			input.seekg(-lastString.length() - 1, std::ios_base::cur);
 			break;
 		case tokSpace:
-		case tokInlineSym:
 		case tokSym:
 			input.seekg(-lastInt - 1, std::ios_base::cur);
 			break;
@@ -204,6 +199,11 @@ unique_ptr<InlineHandler> Parser::findNextInlineHandler(string name) {
 	return nullptr;
 }
 
+void Parser::addSymbols(std::string str) {
+	for (auto e : str)
+		symbols.insert(e);
+}
+
 bool Parser::addToDocument(unique_ptr<_ASTElement> element) {
 	bool res = element != nullptr; 
 	if (element != nullptr)
@@ -215,7 +215,7 @@ bool Parser::addHandler(string name, unique_ptr<ParserHandler> handler) {
 	if (handlerAlias.count(name) == 1)
 		return false;
 	
-	symbols += handler->triggerChars();
+	addSymbols(handler->triggerChars());
 	handlerList.push_back(move(handler));
 	return handlerAlias.emplace(name, handlerList.size() - 1).second;
 }
@@ -231,7 +231,7 @@ bool Parser::addInlineHandler(string name, unique_ptr<InlineHandler> handler) {
 	if (inlineHandlerAlias.count(name) == 1)
 		return 0;
 	
-	inlineSymbols += handler->triggerChars();
+	addSymbols(handler->triggerChars());
 	inlineHandlerList.push_back(move(handler));
 	return inlineHandlerAlias.emplace(name, inlineHandlerList.size() - 1).second;
 }
@@ -315,7 +315,7 @@ unique_ptr<ASTDocument> & Parser::getDocument() {
 }
 
 tuple<unique_ptr<ASTInlineText>, bool> Parser::parseText(
-	bool allowLb, bool unknownAsText, bool allowInlineStyling, int inlineSymReturn, int symReturn) {
+	bool allowLb, bool unknownAsText, bool allowInlineStyling, int symReturn) {
 	unique_ptr<ASTInlineText> text = make_unique<ASTInlineText>();
 
 	while (true) {
@@ -340,12 +340,26 @@ tuple<unique_ptr<ASTInlineText>, bool> Parser::parseText(
 				return make_tuple(move(text), true);
 			}
 			
-			if (lastToken == tokSym) {
-				// Not an inline element, print literally?
-				if (lastString.front() == symReturn) {
-					return make_tuple(move(text), false);
-				}
+			// So it is a tokSym
 
+			if (lastString.front() == symReturn)
+				return make_tuple(move(text), false);
+
+			if (allowInlineStyling) {
+				unique_ptr<InlineHandler> handler = findNextInlineHandler();
+				if (handler == nullptr) {
+					// No appropriate handler, print it or return
+					if (!unknownAsText) 
+						return make_tuple(move(text), false);
+					e = make_unique<ASTPlainText>(lastInt, lastString.front());
+					gettok(); // Consume sym
+				}
+				else {
+					// Valid handler found
+					tie(e, std::ignore) = handler->handle(this);
+				}
+			}
+			else {
 				if (unknownAsText) {
 					text->addElement(make_unique<ASTPlainText>(lastInt, lastString.front()));
 					gettok(); // Consume sym
@@ -353,37 +367,6 @@ tuple<unique_ptr<ASTInlineText>, bool> Parser::parseText(
 				else {
 					return make_tuple(move(text), false);
 				}
-				continue;
-			}
-
-			if (!allowInlineStyling) {
-				// Inline Sym but not allowed
-				if (unknownAsText) {
-					text->addElement(make_unique<ASTPlainText>(lastInt, lastString.front()));
-				}
-				gettok(); // Consume Sym
-
-				continue;
-			}
-
-			// So it is a inline symbol
-			if (lastString.front() == inlineSymReturn) {
-				if (text->size() == 0)
-					return make_tuple(nullptr, false);
-				return make_tuple(move(text), false);
-			}
-
-			unique_ptr<InlineHandler> handler = findNextInlineHandler();
-			if (handler == nullptr) {
-				// No appropriate handler, print it or return
-				if (!unknownAsText) 
-					return make_tuple(move(text), false);
-				e = make_unique<ASTPlainText>(lastInt, lastString.front());
-				gettok(); // Consume sym
-			}
-			else {
-				// Valid handler found
-				tie(e, std::ignore) = handler->handle(this);
 			}
 		}
 		text->addElement(move(e));
@@ -411,7 +394,6 @@ unique_ptr<_ASTInlineElement> Parser::_parseLine(bool allowLb) {
 			}
 			break;
 		case tokSym:
-		case tokInlineSym:
 		case tokNewline:
 		default:
 			return nullptr;
