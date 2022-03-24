@@ -26,6 +26,9 @@ Token Parser::peektok(int chr) {
 	if (inlineSymbols.find_first_of(chr) != std::string::npos)
 		return tokInlineSym;
 
+	if (isdigit(chr))
+		return tokNumber;
+
 	switch (chr) {
 	case ' ':
 		return tokSpace;
@@ -56,6 +59,16 @@ Token Parser::gettok() {
 		while (peektok(_lastChar = input.get()) == tokText)
 			lastString += _lastChar;
 		return lastToken;
+	case tokNumber:
+		lastString = _lastChar;
+		while (isdigit(_lastChar = input.get()))
+			lastString += _lastChar;
+		if (_lastChar == '.') {
+			lastString += _lastChar;
+			_lastChar = input.get();
+		}
+		lastInt = std::stoi(lastString);
+		return lastToken;
 	case tokSpace:
 	case tokInlineSym:
 	case tokSym:
@@ -68,6 +81,94 @@ Token Parser::gettok() {
 		_lastChar = input.get(); // Consume current char
 		return lastToken;
 	}
+}
+
+void Parser::getchar() {
+	_lastChar = input.get();
+}
+
+int Parser::currchar() {
+	return _lastChar;
+}
+
+std::string Parser::escaped(int chr) {
+	switch (chr) {
+	case '\\':
+		return "\\";
+	case '"':
+		return "\"";
+	default:
+		return "\\" + chr;
+	}
+}
+
+void Parser::puttok() {
+	switch (lastToken) {
+		case tokNumber:
+		case tokText:
+			input.seekg(-lastString.length() - 1, std::ios_base::cur);
+			break;
+		case tokSpace:
+		case tokInlineSym:
+		case tokSym:
+			input.seekg(-lastInt - 1, std::ios_base::cur);
+			break;
+		case tokNewline:
+		case tokEOF:
+		default:
+			input.seekg(-2, std::ios_base::cur);
+	}
+}
+
+std::tuple<std::string, bool> Parser::extractText(bool allowRange, std::string delimiter) {
+	if (lastToken == tokNewline || lastToken == tokEOF)
+		return make_tuple("", true);
+	bool rangeStarted = false;
+	
+	puttok(); // We need to get every char, disable Token System
+	getchar(); // Load first Char
+	
+	if (allowRange && _lastChar == '"') {
+		rangeStarted = true;
+		getchar(); // Consume "
+	}
+
+	std::string result;
+
+	while (true) {
+		if (_lastChar == '\n' || input.eof())
+			return make_tuple("", true);
+		if (!rangeStarted && delimiter.find_first_of(_lastChar) != std::string::npos) {
+			// End of Read
+			getchar(); // Consume delim
+			return make_tuple(result, false);
+		}
+		if (rangeStarted && _lastChar == '"') {
+			// Range end
+			getchar(); // Consume closing "
+			rangeStarted = false;
+			break; // Consume until delimiter
+		}
+		if (_lastChar == '\\') {
+			// Escape Sequence
+			getchar(); // Consume \ 
+			result += escaped(_lastChar);
+			getchar(); // Consume escaped char
+		}
+		result += _lastChar;
+	}
+
+	while (delimiter.find_first_of(_lastChar) == std::string::npos &&
+		_lastChar != '\n' && !input.eof()) {
+		getchar();
+	}
+
+	// Next Char is delimiter or Newline or EOF
+	if (_lastChar == '\n' && input.eof())
+		return make_tuple("", true);
+	return make_tuple(result, false);
+
+	gettok(); // Reload Token System
 }
 
 unique_ptr<ParserHandler> Parser::findNextHandler() {
@@ -213,7 +314,8 @@ unique_ptr<ASTDocument> & Parser::getDocument() {
 	return document;
 }
 
-tuple<unique_ptr<ASTInlineText>, bool> Parser::parseText(bool allowLb, bool unknownAsText, int inlineSymReturn) {
+tuple<unique_ptr<ASTInlineText>, bool> Parser::parseText(
+	bool allowLb, bool unknownAsText, bool allowInlineStyling, int inlineSymReturn, int symReturn) {
 	unique_ptr<ASTInlineText> text = make_unique<ASTInlineText>();
 
 	while (true) {
@@ -240,6 +342,10 @@ tuple<unique_ptr<ASTInlineText>, bool> Parser::parseText(bool allowLb, bool unkn
 			
 			if (lastToken == tokSym) {
 				// Not an inline element, print literally?
+				if (lastString.front() == symReturn) {
+					return make_tuple(move(text), false);
+				}
+
 				if (unknownAsText) {
 					text->addElement(make_unique<ASTPlainText>(lastInt, lastString.front()));
 					gettok(); // Consume sym
@@ -247,6 +353,16 @@ tuple<unique_ptr<ASTInlineText>, bool> Parser::parseText(bool allowLb, bool unkn
 				else {
 					return make_tuple(move(text), false);
 				}
+				continue;
+			}
+
+			if (!allowInlineStyling) {
+				// Inline Sym but not allowed
+				if (unknownAsText) {
+					text->addElement(make_unique<ASTPlainText>(lastInt, lastString.front()));
+				}
+				gettok(); // Consume Sym
+
 				continue;
 			}
 
@@ -274,7 +390,7 @@ tuple<unique_ptr<ASTInlineText>, bool> Parser::parseText(bool allowLb, bool unkn
 	}
 }
 
-unique_ptr<_ASTInlineElement> Parser::_parseLine(bool allowLb) {		
+unique_ptr<_ASTInlineElement> Parser::_parseLine(bool allowLb) {
 	switch (lastToken) {
 		case tokText:
 			return move(_parsePlainText());
@@ -308,9 +424,9 @@ unique_ptr<ASTPlainText> Parser::_parsePlainText() {
 
 	gettok(); // Consume Text
 
-	while (lastToken == tokText || 
+	while (lastToken == tokText || lastToken == tokNumber || 
 		(lastToken == tokSpace && (lastInt < 2 || peektok() != tokNewline))) {
-		str += (lastToken == tokText) ? lastString : string(" ");
+		str += (lastToken == tokText || lastToken == tokNumber) ? lastString : string(" ");
 		gettok(); // Consume inserted Text
 	}
 

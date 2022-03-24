@@ -49,7 +49,7 @@ complete - Tested and working (as expected)
   - Paragraphs (untested)
   - Text Styling (bold, italic, underlined, strikethrough) (untested)
   - Blockquotes (untested)
-  - Ordered and Unordered Lists (50%)
+  - Ordered and Unordered Lists (untested)
   - Code (untested)
   - Horizontal Line (complete)
   - Links

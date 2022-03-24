@@ -242,6 +242,66 @@ std::unique_ptr<_ASTElement> UnorderedListHandler::finish(Parser * lex) {
 	return std::move(list);
 }
 
+// ----- OrderedListHandler ----- \\ 
+
+std::unique_ptr<ParserHandler> OrderedListHandler::createNew() {
+	return std::make_unique<OrderedListHandler>();
+}
+
+std::string OrderedListHandler::triggerChars() {
+	return "";
+}
+
+bool OrderedListHandler::canHandle(Parser * lex) {
+	return canHandleBlock(lex) ||
+		((lex->lastToken == tokNumber) &&
+		(lex->lastString.back() == '.') &&
+		(lex->peektok() == tokSpace || lex->peektok() == tokNewline));
+}
+
+std::tuple<std::unique_ptr<_ASTElement>, bool> OrderedListHandler::handle(Parser * lex) {
+	if (list == nullptr) {
+		// Create List
+		list = std::make_unique<ASTOrderedList>();
+	}
+
+	if (lex->lastToken == tokSpace) {
+		// Indent Block
+		handleBlock(lex);
+	}
+	else {
+		// '<Num>.' Block
+		if (handler != nullptr)
+			content->addElement(handler->finish(lex));
+		if (content != nullptr)
+			list->addElement(content);
+
+		// Either way, new Element started
+		content = std::make_unique<ASTListElement>(lex->lastInt);
+
+		lex->gettok(); // Consume <Num>.
+		if (lex->lastToken == tokSpace)	
+			lex->gettok(); // Consume space
+
+		// Else dont consume newline, parseLine will take care of that
+		std::unique_ptr<_ASTElement> e;
+		bool redo;
+		do {
+			std::tie(e, redo) = lex->parseLine(handler);
+			content->addElement(e);
+		} while (redo);
+	}
+
+	return std::make_tuple(nullptr, false);
+}
+
+std::unique_ptr<_ASTElement> OrderedListHandler::finish(Parser * lex) {
+	finishBlock(lex);
+	if (list != nullptr)
+		list->addElement(content);
+	return std::move(list);
+}
+
 
 // ----- InlineTemplateHandler ----- \\ 
 

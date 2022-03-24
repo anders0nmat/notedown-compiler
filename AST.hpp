@@ -86,7 +86,8 @@ public:
 			obj += e->toJson() + ",";
 		}
 
-		obj.erase(std::prev(obj.end()));
+		if (elements.size() != 0)
+			obj.erase(std::prev(obj.end()));
 
 		obj += "]}";
 		return obj;
@@ -215,6 +216,48 @@ public:
 };
 
 
+
+class ASTCommand : public _ASTInlineElement {
+protected:
+
+	std::string commandLine;
+
+public:
+
+	ASTCommand(std::string command) : commandLine(command) {}
+
+};
+
+/*
+	Represents everything that is enclosed in square brackets
+*/
+class ASTModifier : public _ASTInlineElement {
+protected:
+
+	std::unique_ptr<ASTCommand> command;
+	
+	std::unique_ptr<ASTInlineText> content;
+
+	std::string className() {return "ASTModifier";}
+
+public:
+
+	ASTModifier(std::unique_ptr<ASTCommand> command, std::unique_ptr<ASTInlineText> content)
+		: command(std::move(command)), content(std::move(content)) {}
+
+};
+
+/*
+	Represents basic Links
+*/
+class ASTLink : public ASTModifier {
+protected:
+
+public:
+
+};
+
+
 // -------------------------------------- \\ 
 // --------- MULTILINE ELEMENTS --------- \\ 
 // -------------------------------------- \\ 
@@ -315,7 +358,8 @@ public:
 			obj += e->toJson() + ",";
 		}
 
-		obj.erase(std::prev(obj.end()));
+		if (elements.size() != 0)
+			obj.erase(std::prev(obj.end()));
 
 		obj += "]}";
 		return obj;
@@ -330,8 +374,26 @@ protected:
 
 	std::string className() {return "ASTListElement";}
 
+	unsigned long index;
+
 public:
 
+	ASTListElement(unsigned long index = 0) : index(index) {}
+
+	std::string toJson() override {
+		std::string obj = "{\"class\": \"" + className() + "\",";
+		obj += "\"index\": " + std::to_string(index) + ",";
+		obj += "\"elements\": [";
+
+		for (auto & e : elements) {
+			obj += e->toJson() + ",";
+		}
+		if (elements.size() != 0)
+			obj.erase(std::prev(obj.end()));
+
+		obj += "]}";
+		return obj;
+	}
 };
 
 /*
@@ -346,4 +408,14 @@ public:
 
 };
 
+/*
+	Represents Ordered Lists
+*/
+class ASTOrderedList : public _ASTListElement<ASTListElement> {
+protected:
 
+	std::string className() {return "ASTOrderedList";}
+
+public:
+
+};

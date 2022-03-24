@@ -10,10 +10,11 @@ enum Token : int {
 	
 	tokEOF = -1, // End of File
 	tokText = -2, // lastString contains text
-	tokSpace = -3, // lastString contains ' ', lastInt contains ampunt of spaces
-	tokNewline = -4, // Newline Character read (\n)
-	tokInlineSym = -5, // indicates inline formatting, lastString contains Symbol
-	tokSym = -6, // Indicates other formatting Symbol, lastString contains it, lastInt contains amount
+	tokNumber = -3, // lastInt contains number, lastString contains string read (reads <Number>.)
+	tokSpace = -4, // lastString contains ' ', lastInt contains amount of spaces
+	tokNewline = -5, // Newline Character read (\n)
+	tokInlineSym = -6, // indicates inline formatting, lastString contains Symbol, lastInt contains amount
+	tokSym = -7, // Indicates other formatting Symbol, lastString contains it, lastInt contains amount
 };
 
 class ParserHandler;
@@ -42,6 +43,8 @@ protected:
 	std::unique_ptr<ASTPlainText> _parsePlainText();
 	std::unique_ptr<_ASTInlineElement> _parseLine(bool allowLb = true);
 
+	void puttok();
+
 public:
 
 	std::string lastString;
@@ -58,6 +61,17 @@ public:
 	int peekchar();
 
 	Token gettok();
+	void getchar();
+	int currchar();
+
+	std::string escaped(int chr);
+
+	/*
+		@param allowRange Whether delimiter is allowed if in ""
+		@param delimiter Symbol to end. Will consume delimiter
+		@return Unformatted String and whether it ended because of a newline
+	*/
+	std::tuple<std::string, bool> extractText(bool allowRange, std::string delimiter);
 
 	std::unique_ptr<ParserHandler> findNextHandler();
 	std::unique_ptr<ParserHandler> findNextHandler(std::string name);
@@ -70,11 +84,15 @@ public:
 	/*
 		@param allowLb Inserts forced linebreak if line ends with <space><space><newline>
 		@param unknownAsText Also returns on unknown symbols (symbols that are not handled by inlineHandlers)
+		@param allowInlineStyling Whether other inline styling elements are allowed. Printed as literal text
 		@param inlineSymReturn Returns if this Inline-Sym occures
-		@returns If second parameter is true, it ended on linebreak. If False it ended on inlineSymReturn or unknown Symbol (Only if unknownAsText == true)
+		@param symReturn Returns if this Sym occures
+		@returns If second parameter is true, it ended on linebreak. If False it ended on inlineSymReturn, symReturn or unknown Symbol (Only if unknownAsText == true)
 	*/
-	std::tuple<std::unique_ptr<ASTInlineText>, bool> parseText(bool allowLb = true, bool unknownAsText = true, int inlineSymReturn = 0);
+	std::tuple<std::unique_ptr<ASTInlineText>, bool> parseText(
+		bool allowLb = true, bool unknownAsText = true, bool allowInlineStyling = true, int inlineSymReturn = 0, int symReturn = 0);
 
+	// std::tuple<std::unique_ptr<ASTInlineText>, bool> parseText(allowLb, unknownAsText, allowInlineStyling, inlineSymReturn, symReturn)
 
 	bool addHandler(std::string name, std::unique_ptr<ParserHandler> handler);
 	bool addHandlerAlias(std::string alias, std::string name);

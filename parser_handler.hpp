@@ -132,25 +132,21 @@ public:
 	std::unique_ptr<_ASTElement> finish(Parser * lex) override;
 };
 
-// class BlockquoteHandler : public ParserHandler {
-// protected:
-	
-// 	std::unique_ptr<ASTBlockquote> content = nullptr;
-// 	std::unique_ptr<ParserHandler> handler = nullptr;
-// 	bool centered;
+class OrderedListHandler : public BlockHandler<ASTListElement> {
+protected:
 
-// public:
+	std::unique_ptr<ASTOrderedList> list;
 
-// 	BlockquoteHandler() {}
+public:
 
-// 	std::unique_ptr<ParserHandler> createNew() override;
+	std::unique_ptr<ParserHandler> createNew() override;
 
-// 	std::string triggerChars() override;
+	std::string triggerChars() override;
 
-// 	bool canHandle(Parser * lex) override;
+	bool canHandle(Parser * lex) override;
 
-// 	std::tuple<std::unique_ptr<_ASTElement>, bool> handle(Parser * lex) override;
+	std::tuple<std::unique_ptr<_ASTElement>, bool> handle(Parser * lex) override;
 
-// 	std::unique_ptr<_ASTElement> finish(Parser * lex) override;
-// };
+	std::unique_ptr<_ASTElement> finish(Parser * lex) override;
+};
 

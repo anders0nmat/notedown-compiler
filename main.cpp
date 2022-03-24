@@ -79,6 +79,7 @@ int main(int argc, char *argv[]) {
 	Parser parser("example.nd");
 
 	parser.addHandler("H_ulist", std::make_unique<UnorderedListHandler>());
+	parser.addHandler("H_olist", std::make_unique<OrderedListHandler>());
 	parser.addHandler("H_heading", std::make_unique<HeadingHandler>());
 	parser.addHandler("H_blockquote", std::make_unique<BlockquoteHandler>());
 	parser.addHandler("H_hline", std::make_unique<HLineHandler>());
@@ -88,14 +89,18 @@ int main(int argc, char *argv[]) {
 	parser.addInlineHandler("I_underlined", std::make_unique<InlineTemplateHandler<'_'>>());
 	parser.addInlineHandler("I_strikethrough", std::make_unique<InlineTemplateHandler<'~'>>());
 	parser.addInlineHandler("I_highlight", std::make_unique<InlineTemplateHandler<'='>>());
-	parser.addInlineHandler("I_code", std::make_unique<InlineTemplateHandler<'`'>>());
+	
+	// TODO : Needs Rework, inside Code Blocks, other inline styling does not apply
+	// parser.addInlineHandler("I_code", std::make_unique<InlineTemplateHandler<'`'>>());
+	parser.addInlineHandler("I_code", std::make_unique<InlineCodeHandler>());
+
 
 	parser.addHandler("H_paragraph", std::make_unique<ParagraphHandler>());
 	parser.addHandlerAlias("H_default", "H_paragraph");
 
-	parser.parseDocument();
 
-	// std::cout << parser.getDocument()->toString("") << std::endl;
+
+	parser.parseDocument();
 
 	std::ofstream json("AST.json");
 
