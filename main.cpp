@@ -78,6 +78,8 @@
 int main(int argc, char *argv[]) {
 	Parser parser("example.nd");
 
+	// Comment for git testing
+
 	parser.addHandler<UnorderedListHandler>("H_ulist");
 	parser.addHandler<OrderedListHandler>("H_olist");
 	parser.addHandler<HeadingHandler>("H_heading");
