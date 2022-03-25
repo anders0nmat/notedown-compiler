@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <tuple>
 #include <unordered_set>
+#include <functional>
 
 #include "AST.hpp"
 
@@ -69,11 +70,26 @@ public:
 	std::string escaped(int chr);
 
 	/*
+		Turns str into a valid id. This includes converting to lowercase, replacing space with '-'
+		@param str String to convert
+		@result the idified string, and whether it was successful. Returns empty string on unsuccessful
+	*/
+	std::tuple<std::string, bool> make_id(std::string str);
+
+	/*
 		@param allowRange Whether delimiter is allowed if in ""
 		@param delimiter Symbol to end. Will consume delimiter
 		@return Unformatted String and whether it ended because of a newline
 	*/
 	std::tuple<std::string, bool> extractText(bool allowRange, std::string delimiter);
+
+	/*
+		Reads Text literally (no Sym or Space collapsing) until condition is met or EOF/EOL occured
+		Doesnt consume ending token if condition caused end, does consume newline
+		@param condition returns true if reading should end
+		@return String read and whether it ended on EOF/EOL (=true) or condition (=false)
+	*/
+	std::tuple<std::string, bool> readUntil(std::function<bool(Parser *)> condition);
 
 	std::unique_ptr<ParserHandler> findNextHandler();
 	std::unique_ptr<ParserHandler> findNextHandler(std::string name);
@@ -96,8 +112,19 @@ public:
 
 	// std::tuple<std::unique_ptr<ASTInlineText>, bool> parseText(allowLb, unknownAsText, allowInlineStyling, inlineSymReturn, symReturn)
 
+	template<class Cl>
+	bool addHandler(std::string name) {
+		return addHandler(name, std::make_unique<Cl>());
+	}
+
 	bool addHandler(std::string name, std::unique_ptr<ParserHandler> handler);
 	bool addHandlerAlias(std::string alias, std::string name);
+
+	template<class Cl>
+	bool addInlineHandler(std::string name) {
+		return addInlineHandler(name, std::make_unique<Cl>());
+	}
+
 	bool addInlineHandler(std::string name, std::unique_ptr<InlineHandler> handler);
 	bool addInlineHandlerAlias(std::string alias, std::string name);
 

@@ -5,6 +5,10 @@ void Parser::addDefaultHandlers() {
 	
 }
 
+// ------------------------------------ \\ 
+// ---------- Block Handlers ---------- \\ 
+// ------------------------------------ \\ 
+
 #pragma region ParagraphHandler
 // ----- ParagraphHandler ----- \\ 
 
@@ -356,48 +360,83 @@ std::tuple<std::unique_ptr<_ASTElement>, bool> CodeHandler::handle(Parser * lex)
 		return std::make_tuple(nullptr, false);
 	}
 
-	std::unique_ptr<ASTInlineText> line, e;
+	// std::unique_ptr<ASTInlineText> line, e;
 	// std::unique_ptr<_ASTInlineElement> e;
+	// bool eol;
+	std::string currLine;
+
+	// Own read function so multiple spaces are represented correctly
+	// while (
+	// 	(lex->lastToken != tokNewline) &&
+	// 	(lex->lastToken != tokEOF) &&
+	// 	(lex->lastToken != tokSym || lex->lastString[0] != '`' || lex->lastInt != fenceCount || (lex->peektok() != tokNewline && lex->peektok() != tokEOF))
+	// 	) {
+	// 	// Take text literally
+	// 	if (lex->lastToken == tokText || lex->lastToken == tokNumber)
+	// 		currLine += lex->lastString;
+	// 	else
+	// 		currLine += std::string(lex->lastInt, lex->lastString[0]);
+	// 	lex->gettok(); // Consume inserted Text
+	// }
 	bool eol;
+	int count = fenceCount;
+	std::tie(currLine, eol) = lex->readUntil([count](Parser * lex) {
+		return (lex->lastToken == tokSym && lex->lastString[0] == '`' && lex->lastInt == count && (lex->peektok() == tokNewline || lex->peektok() == tokEOF));
+	});
 
-	do {
-		std::tie(e, eol) = lex->parseText(false, true, false, '`');
+	// One only escapes if it is newline or end of block
+	
+	content.push_back(std::make_unique<ASTPlainText>(currLine));
+	if (!eol) {
+		// Finishing symbol
+		lex->gettok(); // Consume ```
+		lex->gettok(); // Consume newline
+		std::unique_ptr<ASTCodeBlock> code = std::make_unique<ASTCodeBlock>(lang);
+		for (auto & e : content)
+			code->addElement(std::move(e));
+		return std::make_tuple(std::move(code), true);
+	}
+
+	// do {
+
+
+		// std::tie(e, eol) = lex->parseText(false, true, false, '`');
 		
-		if (!eol) {
-			// Possibly ended
-			if (lex->lastInt == fenceCount && (lex->peektok() == tokNewline || lex->peektok() == tokEOF)) {
-				// Block ended
-				lex->gettok(); // Consume ```
-				lex->gettok(); // Consume Newline
-				content.push_back(std::move(e));
-				std::unique_ptr<ASTCodeBlock> code = std::make_unique<ASTCodeBlock>(lang);
-				for (auto & e : content)
-					code->addElement(std::move(e));
-				return std::make_tuple(std::move(code), true);
-			}
-			else {
-				// Treat as regular text
-				if (line == nullptr)
-					line = std::move(e);
-				else
-					line->addElement(std::move(e));
+		// if (!eol) {
+		// 	// Possibly ended
+		// 	if (lex->lastInt == fenceCount && (lex->peektok() == tokNewline || lex->peektok() == tokEOF)) {
+		// 		// Block ended
+		// 		lex->gettok(); // Consume ```
+		// 		lex->gettok(); // Consume Newline
+		// 		content.push_back(std::move(e));
+		// 		std::unique_ptr<ASTCodeBlock> code = std::make_unique<ASTCodeBlock>(lang);
+		// 		for (auto & e : content)
+		// 			code->addElement(std::move(e));
+		// 		return std::make_tuple(std::move(code), true);
+		// 	}
+		// 	else {
+		// 		// Treat as regular text
+		// 		if (line == nullptr)
+		// 			line = std::move(e);
+		// 		else
+		// 			line->addElement(std::move(e));
 				
-				line->addElement(std::make_unique<ASTPlainText>(lex->lastInt, '`'));
-				lex->gettok(); // Consume `
-			}
-		}
-		else {
-			lex->gettok(); // Consume Newline
-			if (e == nullptr)
-				e = std::make_unique<ASTInlineText>(); // Empty Lines are taken seriously
-			if (line == nullptr)
-				line = std::move(e);
-			else
-				line->addElement(std::move(e));
-		}
-	} while (!eol);
+		// 		line->addElement(std::make_unique<ASTPlainText>(lex->lastInt, '`'));
+		// 		lex->gettok(); // Consume `
+		// 	}
+		// }
+		// else {
+		// 	lex->gettok(); // Consume Newline
+		// 	if (e == nullptr)
+		// 		e = std::make_unique<ASTInlineText>(); // Empty Lines are taken seriously
+		// 	if (line == nullptr)
+		// 		line = std::move(e);
+		// 	else
+		// 		line->addElement(std::move(e));
+		// }
+	// } while (!eol);
 
-	content.push_back(std::move(line));
+	// content.push_back(std::move(line));
 	// Dont finish, dont return anything
 	return std::make_tuple(nullptr, false);
 }
@@ -411,54 +450,354 @@ std::unique_ptr<_ASTElement> CodeHandler::finish(Parser * lex) {
 
 #pragma endregion
 
-// ----- InlineTemplateHandler ----- \\ 
 
-// template<char indicator>
-// std::unique_ptr<InlineHandler> InlineTemplateHandler<indicator>::createNew() {
-// 	return std::make_unique<InlineTemplateHandler<indicator>>();
-// }
+// ------------------------------------- \\ 
+// ---------- Inline Handlers ---------- \\ 
+// ------------------------------------- \\ 
 
-// template<char indicator>
-// std::string InlineTemplateHandler<indicator>::triggerChars() {
-// 	return std::string(1, indicator);
-// }
+#pragma region InlineCodeHandler
+// ----- InlineCodeHandler ----- \\ 
 
-// template<char indicator>
-// bool InlineTemplateHandler<indicator>::canHandle(Parser * lex) {
-// 	return (lex->lastToken == tokInlineSym) &&
-// 		(lex->lastString.front() == indicator) &&
-// 		(lex->peektok() != tokSpace) && (lex->peektok() != tokNewline);
-// }
+std::unique_ptr<InlineHandler> InlineCodeHandler::createNew() {
+	return std::make_unique<InlineCodeHandler>();
+}
 
-// template<char indicator>
-// std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineTemplateHandler<indicator>::handle(Parser * lex) {
+std::string InlineCodeHandler::triggerChars() {
+	return "`";
+}
+
+bool InlineCodeHandler::canHandle(Parser * lex) {
+	return (lex->lastToken == tokSym) &&
+		(lex->lastString[0] == '`') &&
+		(lex->peektok() != tokSpace) && (lex->peektok() != tokNewline);
+}
+
+std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineCodeHandler::handle(Parser * lex) {
 	
-// 	// If there are no indicators left open, e.g. **** -> *<firstContent>**<secondContent>*
-// 	if (lex->lastInt % 2 == 0)
-// 		return std::make_tuple(nullptr, true);
+	// If there are no indicators left open, e.g. **** -> *<firstContent>**<secondContent>*
+	if (lex->lastInt % 2 == 0)
+		return std::make_tuple(nullptr, true);
 
-// 	lex->gettok(); // Consume opening indicator
-// 	std::unique_ptr<ASTInlineText> content;
-// 	bool endOfLine;
-// 	std::tie(content, endOfLine) = lex->parseText(false, true, indicator);
+	lex->gettok(); // Consume opening indicator
+	std::unique_ptr<ASTInlineText> content;
+	bool endOfLine;
+	std::tie(content, endOfLine) = lex->parseText(false, true, false, '`');
 	
-// 	if (!endOfLine) {
-// 		// Ended on indicator
-// 		lex->gettok(); // Consume closing indicator
-// 		if (content != nullptr)
-// 			return std::make_tuple(std::make_unique<ASTTextModification>(indicator, std::move(content)), true);
-// 		return std::make_tuple(nullptr, true);
-// 	}
+	if (!endOfLine) {
+		// Ended on indicator
+		lex->gettok(); // Consume closing indicator
+		if (content != nullptr)
+			return std::make_tuple(std::make_unique<ASTTextModification>('`', std::move(content)), true);
+		return std::make_tuple(nullptr, true);
+	}
+	if (content != nullptr)
+		content->prependElement(std::make_unique<ASTPlainText>('`'));
 
-// 	content->prependElement(std::make_unique<ASTPlainText>(1, indicator));
+	return std::make_tuple(std::move(content), true);
+}
 
-// 	return std::make_tuple(std::move(content), true);
-// }
+#pragma endregion
 
-// template<char indicator>
-// std::unique_ptr<_ASTElement> InlineTemplateHandler<indicator>::finish(Parser * lex) {
-// 	return nullptr;
-// }
+#pragma region InlineModifierHandler
+// ----- InlineModifierHandler ----- \\ 
 
-// -----  ----- \\ 
+std::unique_ptr<InlineHandler> InlineModifierHandler::createNew() {
+	return std::make_unique<InlineModifierHandler>();
+}
 
+std::string InlineModifierHandler::triggerChars() {
+	return "[](){}<>\"!^#%";
+}
+
+bool InlineModifierHandler::canHandle(Parser * lex) {
+	return (lex->lastToken == tokSym) &&
+		(lex->lastString[0] == '[') &&
+		(lex->peektok() != tokSpace) && (lex->peektok() != tokNewline);
+}
+
+std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineModifierHandler::handle(Parser * lex) {
+	
+	if (lex->lastInt == 1)
+		lex->gettok(); // Consume opening indicator
+	else
+		lex->lastInt--;
+	std::unique_ptr<ASTInlineText> content;
+	bool endOfLine;
+	std::tie(content, endOfLine) = lex->parseText(false, true, true, ']');
+	
+	if (!endOfLine) {
+		// Ended on indicator
+		if (lex->lastInt != 1) {
+			// Invalid, multiple closing chars
+			content->prependElement(std::make_unique<ASTPlainText>('['));
+			return std::make_tuple(std::move(content), true);
+		}
+		lex->gettok(); // Consume closing indicator
+
+		std::string command;
+		std::string url;
+		int type = 0;
+		bool eol;
+		bool inQuote = false;
+		bool success = false;
+		bool succ;
+
+		if (lex->lastToken != tokSym || lex->lastInt != 1) {
+			// Can not possibly be valid
+			content->prependElement(std::make_unique<ASTPlainText>('['));
+			content->addElement(std::make_unique<ASTPlainText>(']'));
+			return std::make_tuple(std::move(content), true);
+		}
+
+		switch (lex->lastString[0]) {
+			case '(':
+				type = '(';
+				lex->gettok(); // Consume (
+				std::tie(url, eol) = lex->readUntil([](Parser * lex) {
+					return (lex->lastToken == tokSpace) || (lex->lastToken == tokSym && lex->lastString[0] == ')');
+				});
+				if (eol) {
+					// Invalid
+					break;
+				}
+				if (lex->lastToken == tokSpace) {
+					lex->gettok(); // Consume Space
+				}
+				std::tie(command, eol) = lex->readUntil([&inQuote](Parser * lex) {
+					if (lex->lastToken == tokSym && lex->lastString[0] == '"') {
+						inQuote = !inQuote;
+					}
+					return (!inQuote && lex->lastToken == tokSym && lex->lastString[0] == ')');
+				});
+				if (eol) {
+					// Invalid
+					break;
+				}
+				if (lex->lastInt > 1)
+					lex->lastInt--;
+				else
+					lex->gettok();
+				// Valid, URL, Command and Type populated
+				success = true;
+				break;
+			case '!':
+				type = '!';
+				lex->gettok(); // Consume !
+				if (lex->lastToken != tokSym || lex->lastString[0] != '(' || lex->lastInt != 1) {
+					// Invalid
+					break;
+				}
+				lex->gettok(); // Consume (
+				std::tie(url, eol) = lex->readUntil([](Parser * lex) {
+					return (lex->lastToken == tokSpace) || (lex->lastToken == tokSym && lex->lastString[0] == ')');
+				});
+				if (eol) {
+					// Invalid
+					break;
+				}
+				if (lex->lastToken == tokSpace) {
+					lex->gettok(); // Consume Space
+				}
+				std::tie(command, eol) = lex->readUntil([&inQuote](Parser * lex) {
+					if (lex->lastToken == tokSym && lex->lastString[0] == '"') {
+						inQuote = !inQuote;
+					}
+					return (!inQuote && lex->lastToken == tokSym && lex->lastString[0] == ')');
+				});
+				if (eol) {
+					// Invalid
+					break;
+				}
+				if (lex->lastInt > 1)
+					lex->lastInt--;
+				else
+					lex->gettok();
+				// Valid, URL, Command and Type populated
+				success = true;
+				break;
+			case '^':
+				type = '^';
+				lex->gettok(); // Consume ^
+				if (lex->lastToken != tokSym || lex->lastString[0] != '(' || lex->lastInt != 1) {
+					// Invalid
+					break;
+				}
+				lex->gettok(); // Consume (
+				std::tie(url, eol) = lex->readUntil([](Parser * lex) {
+					return (lex->lastToken == tokSpace) || (lex->lastToken == tokSym && lex->lastString[0] == ')');
+				});
+				if (eol) {
+					// Invalid
+					break;
+				}
+				if (lex->lastToken == tokSpace) {
+					lex->gettok(); // Consume Space
+				}
+				std::tie(command, eol) = lex->readUntil([&inQuote](Parser * lex) {
+					if (lex->lastToken == tokSym && lex->lastString[0] == '"') {
+						inQuote = !inQuote;
+					}
+					return (!inQuote && lex->lastToken == tokSym && lex->lastString[0] == ')');
+				});
+				if (eol) {
+					// Invalid
+					break;
+				}
+				if (lex->lastInt > 1)
+					lex->lastInt--;
+				else
+					lex->gettok();
+				// Valid, URL, Command and Type populated
+				success = true;
+				break;
+			case '#':
+				type = '#';
+				std::tie(url, succ) = lex->make_id(content->literalText());
+				if (!succ) {
+					// No valid ID
+					break;
+				}
+				lex->gettok(); // Consume #
+				if (lex->lastToken != tokSym || lex->lastString[0] != '(' || lex->lastInt != 1) {
+					// Valid but no other specification
+				}
+				lex->gettok(); // Consume (
+				std::tie(command, eol) = lex->readUntil([&inQuote](Parser * lex) {
+					if (lex->lastToken == tokSym && lex->lastString[0] == '"') {
+						inQuote = !inQuote;
+					}
+					return (!inQuote && lex->lastToken == tokSym && lex->lastString[0] == ')');
+				});
+				if (eol) {
+					// Invalid
+					break;
+				}
+				if (lex->lastInt > 1)
+					lex->lastInt--;
+				else
+					lex->gettok();
+				// Valid, URL, Command and Type populated
+				success = true;
+				break;
+			case '<':
+				type = '<';
+				lex->gettok(); // Consume <
+				if (lex->lastToken != tokSym || lex->lastString[0] != '%' || lex->lastInt != 1) {
+					// Invalid
+					break;
+				}
+				lex->gettok(); // Consume %
+				std::tie(url, eol) = lex->readUntil([](Parser * lex) {
+					return (lex->lastToken == tokSpace) || (lex->lastToken == tokSym && lex->lastString[0] == '>');
+				});
+				if (eol) {
+					// Invalid
+					break;
+				}
+				if (lex->lastToken == tokSpace) {
+					lex->gettok(); // Consume Space
+				}
+				std::tie(command, eol) = lex->readUntil([&inQuote](Parser * lex) {
+					if (lex->lastToken == tokSym && lex->lastString[0] == '"') {
+						inQuote = !inQuote;
+					}
+					return (!inQuote && lex->lastToken == tokSym && lex->lastString[0] == '>');
+				});
+				if (eol) {
+					// Invalid
+					break;
+				}
+				if (lex->lastInt > 1)
+					lex->lastInt--;
+				else
+					lex->gettok();
+				// Valid, URL, Command and Type populated
+				success = true;
+				break;
+			case '{':
+				type = '{';
+				url = "";
+				lex->gettok(); // Consume {
+				std::tie(command, eol) = lex->readUntil([&inQuote](Parser * lex) {
+					if (lex->lastToken == tokSym && lex->lastString[0] == '"') {
+						inQuote = !inQuote;
+					}
+					return (!inQuote && lex->lastToken == tokSym && lex->lastString[0] == '}');
+				});
+				if (eol) {
+					// Invalid
+					break;
+				}
+				if (lex->lastInt > 1)
+					lex->lastInt--;
+				else
+					lex->gettok();
+				// Valid, URL, Command and Type populated
+				success = true;
+				break;
+			default:
+				// Error, not valid
+				break;
+		}
+
+		if (!success) {
+			content->prependElement(std::make_unique<ASTPlainText>('['));
+			content->addElement(std::make_unique<ASTPlainText>(']'));
+			content->addElement(std::make_unique<ASTPlainText>(type));
+			content->addElement(std::make_unique<ASTPlainText>(url));
+			content->addElement(std::make_unique<ASTPlainText>(command));
+			return std::make_tuple(std::move(content), true);
+		}
+
+		return std::make_tuple(std::make_unique<ASTModifier>(type, url, command, std::move(content)), true);
+	}
+
+	content->prependElement(std::make_unique<ASTPlainText>('['));
+
+	return std::make_tuple(std::move(content), true);
+}
+
+#pragma endregion
+
+#pragma region InlineSmileyHandler
+// ----- InlineSmileyHandler ----- \\ 
+
+std::unique_ptr<InlineHandler> InlineSmileyHandler::createNew() {
+	return std::make_unique<InlineSmileyHandler>();
+}
+
+std::string InlineSmileyHandler::triggerChars() {
+	return ":";
+}
+
+bool InlineSmileyHandler::canHandle(Parser * lex) {
+	return (lex->lastToken == tokSym) &&
+		(lex->lastString[0] == ':') &&
+		(lex->peektok() != tokSpace) && (lex->peektok() != tokNewline);
+}
+
+std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineSmileyHandler::handle(Parser * lex) {
+	
+	// If there are no indicators left open, e.g. **** -> *<firstContent>**<secondContent>*
+	if (lex->lastInt % 2 == 0)
+		return std::make_tuple(nullptr, true);
+
+	lex->gettok(); // Consume opening indicator
+	std::unique_ptr<ASTInlineText> content;
+	bool endOfLine;
+	std::tie(content, endOfLine) = lex->parseText(false, true, false, ':');
+	
+	if (!endOfLine) {
+		// Ended on indicator
+		lex->gettok(); // Consume closing indicator
+		if (content != nullptr)
+			return std::make_tuple(std::make_unique<ASTEmoji>(content->literalText()), true);
+		return std::make_tuple(nullptr, true);
+	}
+
+	content->prependElement(std::make_unique<ASTPlainText>(':'));
+
+	return std::make_tuple(std::move(content), true);
+}
+
+#pragma endregion

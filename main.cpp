@@ -78,26 +78,28 @@
 int main(int argc, char *argv[]) {
 	Parser parser("example.nd");
 
-	parser.addHandler("H_ulist", std::make_unique<UnorderedListHandler>());
-	parser.addHandler("H_olist", std::make_unique<OrderedListHandler>());
-	parser.addHandler("H_heading", std::make_unique<HeadingHandler>());
-	parser.addHandler("H_blockquote", std::make_unique<BlockquoteHandler>());
-	parser.addHandler("H_hline", std::make_unique<HLineHandler>());
-	parser.addHandler("H_code", std::make_unique<CodeHandler>());
+	parser.addHandler<UnorderedListHandler>("H_ulist");
+	parser.addHandler<OrderedListHandler>("H_olist");
+	parser.addHandler<HeadingHandler>("H_heading");
+	parser.addHandler<BlockquoteHandler>("H_blockquote");
+	parser.addHandler<HLineHandler>("H_hline");
+	parser.addHandler<CodeHandler>("H_code");
 	
 
-	parser.addInlineHandler("I_bold", std::make_unique<InlineTemplateHandler<'*'>>());
-	parser.addInlineHandler("I_italic", std::make_unique<InlineTemplateHandler<'/'>>());
-	parser.addInlineHandler("I_underlined", std::make_unique<InlineTemplateHandler<'_'>>());
-	parser.addInlineHandler("I_strikethrough", std::make_unique<InlineTemplateHandler<'~'>>());
-	parser.addInlineHandler("I_highlight", std::make_unique<InlineTemplateHandler<'='>>());
+	parser.addInlineHandler<InlineTemplateHandler<'*'>>("I_bold");
+	parser.addInlineHandler<InlineTemplateHandler<'/'>>("I_italic");
+	parser.addInlineHandler<InlineTemplateHandler<'_'>>("I_underlined");
+	parser.addInlineHandler<InlineTemplateHandler<'~'>>("I_strikethrough");
+	parser.addInlineHandler<InlineTemplateHandler<'='>>("I_highlight");
 
-	parser.addInlineHandler("I_emoji", std::make_unique<InlineSmileyHandler>());
+	parser.addInlineHandler<InlineSmileyHandler>("I_emoji");
 
-	parser.addInlineHandler("I_code", std::make_unique<InlineCodeHandler>());
+	parser.addInlineHandler<InlineCodeHandler>("I_code");
+
+	parser.addInlineHandler<InlineModifierHandler>("I_link");
 
 
-	parser.addHandler("H_paragraph", std::make_unique<ParagraphHandler>());
+	parser.addHandler<ParagraphHandler>("H_paragraph");
 	parser.addHandlerAlias("H_default", "H_paragraph");
 
 

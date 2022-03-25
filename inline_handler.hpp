@@ -59,47 +59,13 @@ public:
 
 	InlineCodeHandler() {}
 
-	std::unique_ptr<InlineHandler> createNew() {
-		return std::make_unique<InlineCodeHandler>();
-	}
+	std::unique_ptr<InlineHandler> createNew() override;
 
-	std::string triggerChars() {
-		return "`";
-	}
+	std::string triggerChars() override;
 
-	bool canHandle(Parser * lex) {
-		return (lex->lastToken == tokSym) &&
-			(lex->lastString[0] == '`') &&
-			(lex->peektok() != tokSpace) && (lex->peektok() != tokNewline);
-	}
+	bool canHandle(Parser * lex) override;
 
-	std::tuple<std::unique_ptr<_ASTInlineElement>, bool> handle(Parser * lex) {
-		
-		// If there are no indicators left open, e.g. **** -> *<firstContent>**<secondContent>*
-		if (lex->lastInt % 2 == 0)
-			return std::make_tuple(nullptr, true);
-
-		lex->gettok(); // Consume opening indicator
-		std::unique_ptr<ASTInlineText> content;
-		bool endOfLine;
-		std::tie(content, endOfLine) = lex->parseText(false, true, false, '`');
-		
-		if (!endOfLine) {
-			// Ended on indicator
-			lex->gettok(); // Consume closing indicator
-			if (content != nullptr)
-				return std::make_tuple(std::make_unique<ASTTextModification>('`', std::move(content)), true);
-			return std::make_tuple(nullptr, true);
-		}
-		if (content != nullptr)
-			content->prependElement(std::make_unique<ASTPlainText>('`'));
-
-		return std::make_tuple(std::move(content), true);
-	}
-
-	std::unique_ptr<_ASTElement> finish(Parser * lex) {
-		return nullptr;
-	}
+	std::tuple<std::unique_ptr<_ASTInlineElement>, bool> handle(Parser * lex) override;
 };
 
 class InlineModifierHandler : public InlineHandler {
@@ -109,84 +75,13 @@ public:
 
 	InlineModifierHandler() {}
 
-	std::unique_ptr<InlineHandler> createNew() {
-		return std::make_unique<InlineModifierHandler>();
-	}
+	std::unique_ptr<InlineHandler> createNew() override;
 
-	std::string triggerChars() {
-		return "[](){}<>\"!^#";
-	}
+	std::string triggerChars() override;
 
-	bool canHandle(Parser * lex) {
-		return (lex->lastToken == tokSym) &&
-			(lex->lastString[0] == '[') &&
-			(lex->peektok() != tokSpace) && (lex->peektok() != tokNewline);
-	}
+	bool canHandle(Parser * lex) override;
 
-	std::tuple<std::unique_ptr<_ASTInlineElement>, bool> handle(Parser * lex) {
-		
-		// If there are no indicators left open, e.g. **** -> *<firstContent>**<secondContent>*
-		if (lex->lastInt == 1)
-			lex->gettok(); // Consume opening indicator
-		else
-			lex->lastInt--;
-		std::unique_ptr<ASTInlineText> content;
-		bool endOfLine;
-		std::tie(content, endOfLine) = lex->parseText(false, true, true, ']');
-		
-		if (!endOfLine) {
-			// Ended on indicator
-			if (lex->lastInt != 1) {
-				// Invalid, multiple closing chars
-
-			}
-			lex->gettok(); // Consume closing indicator
-
-			std::string command;
-			bool success;
-
-			if (lex->lastToken != tokSym) {
-				// Can not possibly be valid
-
-			}
-
-			switch (lex->lastString[0]) {
-				case '(':
-
-					break;
-				case '!':
-
-					break;
-				case '^':
-
-					break;
-				case '#':
-
-					break;
-				case '<':
-
-					break;
-				case '{':
-
-					break;
-				default:
-					// Error, not valid
-					break;
-			}
-
-			if (content != nullptr)
-				return std::make_tuple(std::make_unique<ASTTextModification>('`', std::move(content)), true);
-			return std::make_tuple(nullptr, true);
-		}
-
-		content->prependElement(std::make_unique<ASTPlainText>('['));
-
-		return std::make_tuple(std::move(content), true);
-	}
-
-	std::unique_ptr<_ASTElement> finish(Parser * lex) {
-		return nullptr;
-	}
+	std::tuple<std::unique_ptr<_ASTInlineElement>, bool> handle(Parser * lex) override;
 };
 
 class InlineSmileyHandler : public InlineHandler {
@@ -196,91 +91,18 @@ public:
 
 	InlineSmileyHandler() {}
 
-	std::unique_ptr<InlineHandler> createNew() {
-		return std::make_unique<InlineSmileyHandler>();
-	}
+	std::unique_ptr<InlineHandler> createNew() override;
 
-	std::string triggerChars() {
-		return ":_-";
-	}
+	std::string triggerChars() override;
 
-	bool canHandle(Parser * lex) {
-		return (lex->lastToken == tokSym) &&
-			(lex->lastString[0] == ':') &&
-			(lex->peektok() != tokSpace) && (lex->peektok() != tokNewline);
-	}
+	bool canHandle(Parser * lex) override;
 
-	std::tuple<std::unique_ptr<_ASTInlineElement>, bool> handle(Parser * lex) {
-		
-		// If there are no indicators left open, e.g. **** -> *<firstContent>**<secondContent>*
-		if (lex->lastInt % 2 == 0)
-			return std::make_tuple(nullptr, true);
-
-		lex->gettok(); // Consume opening indicator
-		std::unique_ptr<ASTInlineText> content;
-		bool endOfLine;
-		std::tie(content, endOfLine) = lex->parseText(false, true, false, ':');
-		
-		if (!endOfLine) {
-			// Ended on indicator
-			lex->gettok(); // Consume closing indicator
-			if (content != nullptr)
-				return std::make_tuple(std::make_unique<ASTEmoji>(content->literalText()), true);
-			return std::make_tuple(nullptr, true);
-		}
-
-		content->prependElement(std::make_unique<ASTPlainText>(':'));
-
-		return std::make_tuple(std::move(content), true);
-	}
-
-	std::unique_ptr<_ASTElement> finish(Parser * lex) {
-		return nullptr;
-	}
+	std::tuple<std::unique_ptr<_ASTInlineElement>, bool> handle(Parser * lex) override;
 };
 
-/*
+class InlineCommandHandler : public InlineHandler {
+protected:
 
-gettext()
-	if "
-		blockBegin
-		consume "
-	
-	while 
-.	!blockbegin && space
-	||	blockbegin && "	
-		text <- current
-	
-	return text
+public:
 
-link()
-	gettext()
-	space?
-	while
-		#?
-			gettext()
-		.?
-			gettext()
-		:?
-			gettext()
-		+?
-			gettext()
-			=?
-			gettext()
-		$?
-			gettext()
-			while
-				,?
-				gettext()
-		>?
-			gettext()
-			:?
-			gettext()
-		error?
-
-		consume space?
-
-
-
-*/
-
+};

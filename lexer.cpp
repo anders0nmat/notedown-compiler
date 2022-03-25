@@ -1,6 +1,7 @@
 #include "lexer.hpp"
 
 #include <iostream>
+#include <algorithm>
 
 using std::string;
 using std::unique_ptr;
@@ -115,6 +116,31 @@ void Parser::puttok() {
 	}
 }
 
+std::tuple<std::string, bool> Parser::make_id(std::string str) {
+	std::string id;
+	for (auto e : str) {
+		// Letters
+		if (65 <= e && e <= 90)
+			// Uppercase letter
+			id += e + 32;
+		if (97 <= e && e <= 122)
+			id += e;
+
+		// Numbers
+		if (48 <= e && e <= 57)
+			id += e;
+
+		// Allowed for html compatibility
+		if (e == '_' || e == '-')
+			id += e;
+
+		// Space convert
+		if (e == ' ')
+			id += '-';
+	}
+	return make_tuple(id, true);
+}
+
 std::tuple<std::string, bool> Parser::extractText(bool allowRange, std::string delimiter) {
 	if (lastToken == tokNewline || lastToken == tokEOF)
 		return make_tuple("", true);
@@ -166,6 +192,32 @@ std::tuple<std::string, bool> Parser::extractText(bool allowRange, std::string d
 
 	//gettok(); // Reload Token System
 	//return make_tuple("", true);
+}
+
+std::tuple<std::string, bool> Parser::readUntil(std::function<bool(Parser *)> condition) {
+	if (!condition)
+		return make_tuple("", false);
+	std::string res;
+
+	while (
+		(lastToken != tokNewline) &&
+		(lastToken != tokEOF) &&
+		(!condition(this))
+		) {
+		// Take text literally
+		if (lastToken == tokText || lastToken == tokNumber)
+			res += lastString;
+		else
+			res += std::string(lastInt, lastString[0]);
+		gettok(); // Consume inserted Text
+	}
+
+	if (lastToken == tokNewline || lastToken == tokEOF) {
+		if (lastToken == tokNewline)
+			gettok(); // Consume Newline
+		return make_tuple(res, true);
+	}
+	return make_tuple(res, false);
 }
 
 unique_ptr<ParserHandler> Parser::findNextHandler() {

@@ -266,24 +266,17 @@ public:
 
 };
 
-class ASTCommand : public _ASTInlineElement {
-protected:
-
-	std::string commandLine;
-
-public:
-
-	ASTCommand(std::string command) : commandLine(command) {}
-
-};
-
 /*
 	Represents everything that is enclosed in square brackets
 */
 class ASTModifier : public _ASTInlineElement {
 protected:
 
-	std::unique_ptr<ASTCommand> command;
+	std::string command;
+
+	std::string url;
+
+	int type = 0;
 	
 	std::unique_ptr<ASTInlineText> content;
 
@@ -291,22 +284,28 @@ protected:
 
 public:
 
-	ASTModifier(std::unique_ptr<ASTCommand> command, std::unique_ptr<ASTInlineText> content)
-		: command(std::move(command)), content(std::move(content)) {}
+	ASTModifier(int type, std::string url, std::string command, std::unique_ptr<ASTInlineText> content)
+		: type(type), url(url), command(command), content(std::move(content)) {}
 
 	std::string literalText() override {
 		return content->literalText();
 	}
 
-};
+	std::string toJson() {
+		std::string obj = "{\"class\": \"" + className() + "\",";
+		obj += "\"type\": \"";
+		obj += type;
+		obj += "\",";
 
-/*
-	Represents basic Links
-*/
-class ASTLink : public ASTModifier {
-protected:
+		obj += "\"url\": \"" + url + "\",";
+		obj += "\"command\": \"" + command + "\",";
 
-public:
+		obj += "\"content\":";
+		obj += content->toJson();
+
+		obj += "}";
+		return obj;
+	}
 
 };
 
@@ -491,6 +490,22 @@ public:
 
 	void addCommand(std::unique_ptr<ASTInlineText> & e) {
 		command = std::move(e);
+	}
+
+	std::string toJson() override {
+		std::string obj = "{\"class\": \"" + className() + "\",";
+		obj += "\"lang\": \"" + lang + "\",";
+		obj += "\"elements\": [";
+
+		for (auto & e : elements) {
+			obj += e->toJson() + ",";
+		}
+
+		if (elements.size() != 0)
+			obj.erase(std::prev(obj.end()));
+
+		obj += "]}";
+		return obj;
 	}
 
 };

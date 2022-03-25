@@ -1,9 +1,7 @@
 
-```cpp
-void self() {
-	if true
-
-	return 2
-}
-
-```
+[URL Links](google.com :"With optional Description")
+[Images]!(/img/cat.png :Cute)
+[optional text]^(id :"And description")
+[Headings]#(:"With description")
+[Replace-Content]<%name>
+[Commands]{}

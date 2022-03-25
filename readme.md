@@ -32,6 +32,7 @@
 		- [Collapsible Headings](#collapsible-headings)
 		- [Replace Content](#replace-content)
 		- [Types of Links](#types-of-links)
+- [complicated heading!"#$%&'()*+,./0123456789:;<=>?@[\]^_`{|}~äß](#complicated-heading0123456789_äß)
 
 ## Description
 
@@ -45,34 +46,34 @@ untested - Implemented, but not thoroughly tested
 complete - Tested and working (as expected)
 
 - Markdown Features
-  - Headings (untested)
-  - Paragraphs (untested)
-  - Text Styling (bold, italic, underlined, strikethrough) (untested)
-  - Blockquotes (untested)
-  - Ordered and Unordered Lists (untested)
-  - Code (untested)
-  - Horizontal Line (complete)
-  - Links
-  - Images
+  - Headings (90%)
+  - Paragraphs (90%)
+  - Text Styling (bold, italic, underlined, strikethrough) (90%)
+  - Blockquotes (90%)
+  - Ordered and Unordered Lists (90%)
+  - Code (90%)
+  - Horizontal Line (95%)
+  - Links (70%)
+  - Images (70%)
 - Extended Markdown Features
   - Tables
-  - Fenced Code Blocks (untested)
-  - Footnotes
+  - Fenced Code Blocks (90%)
+  - Footnotes (50%)
   - Heading IDs
   - Definition List
   - Task List
   - Emoji (30%)
-  - Highlight (untested)
-  - Reference-Style Links
+  - Highlight (90%)
+  - Reference-Style Links (30%)
   - Syntax Highlighting
-  - Links to Headings
-  - HTML Tag Support
+  - Links to Headings (70%)
+  - ~~HTML Tag Support~~
   - Admonitions
 - My Contribution
-  - Element Commands
-  - Better Table Formatting
+  - Element Commands (10%)
+  - Better Table Formatting (40%)
   - Collapsible Headings
-  - Replace Content
+  - Replace Content (10%)
 
 ### Headings
 
@@ -625,3 +626,5 @@ Imagine content that will be defined <span style="color:red">in the future</span
   that not all of them will look good or even work in all circumstances
 
 ```
+
+# complicated heading!"#$%&'()*+,./0123456789:;<=>?@[\]^_`{|}~äß
