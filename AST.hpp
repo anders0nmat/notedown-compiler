@@ -1,10 +1,198 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <unordered_map>
 
-// -------------------------------------- \\ 
-// ------------- TEMPLATES -------------- \\ 
-// -------------------------------------- \\ 
+/*
+	Class holding all kinds of commands
+*/
+class ASTCommand {
+protected:
+
+	std::string id;
+	std::string classes;
+	std::string title;
+	std::vector<std::pair<std::string, std::string>> attributes;
+	std::string css;
+	std::vector<std::pair<std::string, std::vector<std::string>>> functions;
+
+	std::unordered_map<std::string, std::string> flags;
+
+	std::vector<std::string> splitSnippets(std::string str, char c) {
+		std::vector<std::string> result;
+		std::string s;
+		bool block = false;
+		for (auto e : str) {
+			if (!block && e == c) {
+				if (!s.empty())
+					result.push_back(s);
+				s = "";
+			}
+			else if (e == '"') {
+				block = !block;
+			}
+			else
+				s += e;
+		}
+		if (!s.empty())
+			result.push_back(s);
+		return result;
+	}
+
+	std::vector<std::string> splitAt(std::string str, char c) {
+		std::vector<std::string> result;
+		std::string s;
+		for (auto e : str) {
+			if (e == c) {
+				if (!s.empty())
+					result.push_back(s);
+				s = "";
+			}
+			else
+				s += e;
+		}
+		if (!s.empty())
+			result.push_back(s);
+		return result;
+	}
+
+	std::pair<std::string, std::string> apartAt(std::string str, char c) {
+		size_t pos = str.find_first_of(c);
+		if (pos == std::string::npos)
+			return std::make_pair(str, "");
+		return std::make_pair(str.substr(0, pos), str.substr(pos + 1));
+	}
+
+	bool strisalnum(std::string str) {
+		for (auto e : str)
+			if (!isalnum(e))
+				return false;
+		return true;
+	}
+
+	bool strisiden(std::string str) {
+		for (auto e : str)
+			if (!isalnum(e) && e != '-' && e != '_')
+				return false;
+		return true;
+	}
+
+	virtual std::string className() {return "ASTCommand";}
+
+public:
+
+	ASTCommand() {}
+
+	ASTCommand(std::string command) {
+		std::vector<std::string> snippets(splitSnippets(command, ' '));
+		for (auto & e : snippets) {
+			if (e[0] == '#' && e.length() > 1) {
+				// ID Setter
+				std::string newId = e.substr(1);
+				if (strisiden(newId))
+					id = newId;
+				continue;
+			}
+			if (e[0] == '.' && e.length() > 1) {
+				std::vector cls(splitAt(e, '.'));
+				for (auto & c : cls) {
+					if (strisiden(c))
+						classes += (classes.empty() ? "" : " ") + c;
+				}
+				continue;
+			}
+			if (e[0] == ':' && e.length() > 1) {
+				std::string desc = e.substr(1);
+				if (desc[0] == '"')
+					title = desc.substr(1, desc.length() - 2);
+				else
+					title = desc;
+				continue;
+			}
+			if (e[0] == '+' && e.length() > 1) {
+				auto fields = apartAt(e.substr(1), '=');
+				if (strisiden(fields.first))
+					attributes.push_back(fields);
+				continue;
+			}
+			if (e[0] == '$' && e.length() > 1) {
+				auto funcarg = apartAt(e.substr(1), ':');
+				if (strisiden(funcarg.first)) {
+					std::pair<std::string, std::vector<std::string>> f;
+					f.first = funcarg.first;
+					if (!funcarg.second.empty()) {
+						auto args = splitSnippets(funcarg.second, ',');
+						for (auto & arg : args) {
+							if (arg[0] == '"')
+								f.second.push_back(arg.substr(1, arg.length() - 2));
+							else
+								f.second.push_back(arg);
+						}
+						functions.push_back(f);
+					}
+				}
+				
+				continue;
+			}
+			if (e[0] == '>' && e.length() > 4) {
+				auto funcarg = apartAt(e.substr(1), ':');
+				if (!funcarg.second.empty() && strisiden(funcarg.first)) {
+					if (funcarg.second[0] == '"') {
+						funcarg.second = funcarg.second.substr(1, funcarg.second.length() - 2);
+					}
+					css.append(funcarg.first + ": " + funcarg.second + "; ");
+				}
+				continue;
+			}
+		}
+	}
+
+	virtual std::string toJson() {
+		std::string obj = "{\"class\": \"" + className() + "\",";
+		obj += "\"id\": \"" + id + "\",";
+		obj += "\"classes\": \"" + classes + "\",";
+		obj += "\"title\": \"" + title + "\",";
+		obj += "\"css\": \"" + css + "\",";
+
+		obj += "\"attributes\": {";
+
+		for (auto & e : attributes) {
+			obj += "\"" + e.first + "\": \"" + e.second + "\",";
+		}		
+		
+		if (attributes.size() != 0)
+			obj.erase(std::prev(obj.end()));
+
+		obj += "},";
+
+		obj += "\"functions\": {";
+
+		for (auto & e : functions) {
+			obj += "\"" + e.first + "\": [";
+			for (auto arg : e.second) {
+				obj += "\"" + arg + "\",";
+			}
+			if (e.second.size() != 0)
+				obj.erase(std::prev(obj.end()));
+			obj += "],";
+		}		
+		
+		if (attributes.size() != 0)
+			obj.erase(std::prev(obj.end()));
+
+		obj += "}";
+		
+		
+		obj += "}";
+		return obj;
+	}
+
+	void execute() {}
+};
+
+// -------------------------------------- //
+// ------------- TEMPLATES -------------- //
+// -------------------------------------- //
 
 /*
 	Base Class for entire AST.
@@ -17,18 +205,47 @@
 class _ASTElement {
 protected:
 
+	std::unique_ptr<ASTCommand> commands;
+
+	std::unordered_map<std::string, std::string> attributes;
+
+
 	virtual std::string className() {return "_ASTElement";}
+
+	std::string cmdJson() {
+		return commands == nullptr ? "\"command\": null" : "\"command\": " + commands->toJson();
+	}
 
 public:
 
+	_ASTElement * parent = nullptr;
+	
 	virtual ~_ASTElement() {}
 
-	virtual std::string toString(std::string prefix) {
-		return prefix + className();
+	virtual std::string toJson() {
+		std::string obj = "{\"class\": \"" + className() + "\",";
+		obj += cmdJson();
+		obj += "}";
+		return obj;
 	}
 
-	virtual std::string toJson() {
-		return "{\"class\": \"" + className() + "\"}";
+	virtual bool isEmpty() {
+		return true;
+	}
+
+	virtual void addCommand(std::unique_ptr<ASTCommand> && command) {
+		if (command != nullptr)
+			commands = std::move(command);
+	}
+
+	virtual void addCommand(std::unique_ptr<ASTCommand> & command) {
+		if (command != nullptr)
+			commands = std::move(command);
+	}
+
+	virtual void executeCommands() {
+		if (commands != nullptr)
+			commands->execute();
 	}
 };
 
@@ -46,29 +263,36 @@ protected:
 public:
 
 	virtual void addElement(std::unique_ptr<cl> & element) {
-		if (element != nullptr)
+		if (element != nullptr) {
+			element->parent = this;
 			elements.push_back(std::move(element));
-	}
-
-	virtual void prependElement(std::unique_ptr<cl> & element) {
-		if (element != nullptr)
-			elements.insert(elements.begin(), std::move(element));
-	}
-
-	virtual void addElement(std::unique_ptr<cl> && element) {
-		if (element != nullptr)
-			elements.push_back(std::move(element));
-	}
-
-	virtual void addElements(std::vector<std::unique_ptr<cl>> && elements) {
-		for (auto & e : elements) {
-			addElement(e);
 		}
 	}
 
-	virtual void prependElement(std::unique_ptr<cl> && element) {
-		if (element != nullptr)
+	virtual void prependElement(std::unique_ptr<cl> & element) {
+		if (element != nullptr) {
+			element->parent = this;
 			elements.insert(elements.begin(), std::move(element));
+		}
+	}
+
+	virtual void addElement(std::unique_ptr<cl> && element) {
+		if (element != nullptr) {
+			element->parent = this;
+			elements.push_back(std::move(element));
+		}
+	}
+
+	virtual void addElements(std::vector<std::unique_ptr<cl>> && elements) {
+		for (auto & e : elements)
+			addElement(e);
+	}
+
+	virtual void prependElement(std::unique_ptr<cl> && element) {
+		if (element != nullptr) {
+			element->parent = this;
+			elements.insert(elements.begin(), std::move(element));
+		}
 	}
 
 
@@ -95,16 +319,18 @@ public:
 		if (elements.size() != 0)
 			obj.erase(std::prev(obj.end()));
 
-		obj += "]}";
+		obj += "],";
+		obj += cmdJson();
+		obj += "}";
 		return obj;
 	}
 
 };
 
 
-// -------------------------------------- \\ 
-// ---------- INLINE ELEMENTS ----------- \\ 
-// -------------------------------------- \\ 
+// -------------------------------------- //
+// ---------- INLINE ELEMENTS ----------- //
+// -------------------------------------- //
 
 
 /*
@@ -166,18 +392,15 @@ public:
 		return content;
 	}
 
-	std::string toString(std::string prefix) {
-		return prefix + className() + "\n" + 
-			prefix + "  -content: \"" + content + "\"";
-	}
-
 	std::string toJson() {
 		std::string obj = "{\"class\": \"" + className() + "\",";
 		obj += "\"content\": \"";
 
 		obj += content;
 
-		obj += "\"}";
+		obj += "\",";
+		obj += cmdJson();
+		obj += "}";
 		return obj;
 	}
 };
@@ -213,16 +436,12 @@ public:
 	ASTTextModification(char symbol) : symbol(symbol) {}
 
 	ASTTextModification(char symbol, std::unique_ptr<_ASTInlineElement> element) 
-	: symbol(symbol), content(std::move(element)) {}
+	: symbol(symbol), content(std::move(element)) {
+		content->parent = this;
+	}
 
 	std::string literalText() override {
 		return content->literalText();
-	}
-
-	std::string toString(std::string prefix) {
-		return prefix + className() + "\n" +
-			prefix + "  -symbol: " + symbol + "\n" +
-			content->toString(prefix + "  ");
 	}
 
 	std::string toJson() {
@@ -233,7 +452,9 @@ public:
 		obj += "\"content\": ";
 
 		obj += content->toJson();
-		
+		obj += ",";
+
+		obj += cmdJson();
 		obj += "}";
 		return obj;
 	}
@@ -257,10 +478,11 @@ public:
 	std::string toJson() {
 		std::string obj = "{\"class\": \"" + className() + "\",";
 		obj += "\"shortcode\": \"";
-
 		obj += shortcode;
+		obj += "\",";
 
-		obj += "\"}";
+		obj += cmdJson();
+		obj += "}";
 		return obj;
 	}
 
@@ -272,11 +494,9 @@ public:
 class ASTModifier : public _ASTInlineElement {
 protected:
 
-	std::string command;
-
+	int type;
 	std::string url;
-
-	int type = 0;
+	std::string command;
 	
 	std::unique_ptr<ASTInlineText> content;
 
@@ -285,7 +505,9 @@ protected:
 public:
 
 	ASTModifier(int type, std::string url, std::string command, std::unique_ptr<ASTInlineText> content)
-		: type(type), url(url), command(command), content(std::move(content)) {}
+		: type(type), url(url), command(command), content(std::move(content)) {
+			content->parent = this;
+		}
 
 	std::string literalText() override {
 		return content->literalText();
@@ -302,17 +524,179 @@ public:
 
 		obj += "\"content\":";
 		obj += content->toJson();
+		obj += ",";
 
+		obj += cmdJson();
 		obj += "}";
 		return obj;
 	}
 
 };
 
+/*
+	Represents Links with <a> element
+*/
+class ASTModifierLink : public _ASTInlineElement {
+protected:
 
-// -------------------------------------- \\ 
-// --------- MULTILINE ELEMENTS --------- \\ 
-// -------------------------------------- \\ 
+	std::string url;
+
+	std::unique_ptr<ASTInlineText> content;
+
+	std::string className() {return "ASTModifierLink";}
+
+public:
+
+	ASTModifierLink(std::string & url, std::unique_ptr<ASTInlineText> & content) : url(url), content(std::move(content)) {
+		content->parent = this;
+	}
+
+	std::string toJson() {
+		std::string obj = "{\"class\": \"" + className() + "\",";
+		obj += "\"url\": \"" + url + "\",";
+
+		obj += "\"content\":";
+		obj += content->toJson();
+		obj += ",";
+
+		obj += cmdJson();
+		obj += "}";
+		return obj;
+	}
+};
+
+/*
+	Represents Images
+*/
+class ASTModifierImage : public _ASTInlineElement {
+protected:
+
+	std::string url;
+
+	std::unique_ptr<ASTInlineText> content;
+	
+	std::string className() {return "ASTModifierImage";}
+
+public:
+
+	ASTModifierImage(std::string & url, std::unique_ptr<ASTInlineText> & content) : url(url), content(std::move(content)) {
+		content->parent = this;
+	}
+	
+	std::string toJson() {
+		std::string obj = "{\"class\": \"" + className() + "\",";
+		obj += "\"url\": \"" + url + "\",";
+
+		obj += "\"content\":";
+		obj += content->toJson();
+		obj += ",";
+
+		obj += cmdJson();
+		obj += "}";
+		return obj;
+	}
+};
+
+/*
+	Represents Footnotes
+*/
+class ASTModifierFootnote : public _ASTInlineElement {
+protected:
+
+	std::string id;
+
+	std::unique_ptr<ASTInlineText> content;
+	
+	std::string className() {return "ASTModifierFootnote";}
+
+public:
+
+	ASTModifierFootnote(std::string & id, std::unique_ptr<ASTInlineText> & content) : id(id), content(std::move(content)) {
+		content->parent = this;
+	}
+	
+	std::string toJson() {
+		std::string obj = "{\"class\": \"" + className() + "\",";
+		obj += "\"id\": \"" + id + "\",";
+
+		obj += "\"content\":";
+		obj += content->toJson();
+		obj += ",";
+
+		obj += cmdJson();
+		obj += "}";
+		return obj;
+	}
+};
+
+/*
+	Represents Heading Links
+*/
+class ASTModifierHeadingLink : public _ASTInlineElement {
+protected:
+
+	std::string id;
+
+	std::unique_ptr<ASTInlineText> content;
+	
+	std::string className() {return "ASTModifierHeadingLink";}
+
+public:
+
+	ASTModifierHeadingLink(std::string & id, std::unique_ptr<ASTInlineText> & content) : id(id), content(std::move(content)) {
+		content->parent = this;
+	}
+	
+	std::string toJson() {
+		std::string obj = "{\"class\": \"" + className() + "\",";
+		obj += "\"id\": \"" + id + "\",";
+
+		obj += "\"content\":";
+		obj += content->toJson();
+		obj += ",";
+
+		obj += cmdJson();
+		obj += "}";
+		return obj;
+	}
+};
+
+/*
+	Represents Replaced Content
+*/
+class ASTModifierReplace : public _ASTInlineElement {
+protected:
+
+	std::string id;
+
+	std::unique_ptr<ASTInlineText> content;
+	
+	std::string className() {return "ASTModifierReplace";}
+
+public:
+
+	ASTModifierReplace(std::string & id, std::unique_ptr<ASTInlineText> & content) : id(id), content(std::move(content)) {
+		content->parent = this;
+	}
+	
+	std::string toJson() {
+		std::string obj = "{\"class\": \"" + className() + "\",";
+		obj += "\"id\": \"" + id + "\",";
+
+		obj += "\"content\":";
+		obj += content->toJson();
+		obj += ",";
+
+		obj += cmdJson();
+		obj += "}";
+		return obj;
+	}
+};
+
+
+// -------------------------------------- //
+// --------- MULTILINE ELEMENTS --------- //
+// -------------------------------------- //
 
 
 /*
@@ -346,7 +730,9 @@ protected:
 
 public:
 
-	ASTHeading(int level, std::unique_ptr<ASTInlineText> content) : level(level), content(std::move(content)) {}
+	ASTHeading(int level, std::unique_ptr<ASTInlineText> content) : level(level), content(std::move(content)) {
+		content->parent = this;
+	}
 
 	std::string toJson() {
 		std::string obj = "{\"class\": \"" + className() + "\",";
@@ -354,7 +740,9 @@ public:
 		obj += "\"text\": ";
 
 		obj += content->toJson();
+		obj += ",";
 
+		obj += cmdJson();
 		obj += "}";
 		return obj;
 	}
@@ -413,7 +801,10 @@ public:
 		if (elements.size() != 0)
 			obj.erase(std::prev(obj.end()));
 
-		obj += "]}";
+		obj += "],";
+
+		obj += cmdJson();
+		obj += "}";
 		return obj;
 	}
 };
@@ -443,7 +834,10 @@ public:
 		if (elements.size() != 0)
 			obj.erase(std::prev(obj.end()));
 
-		obj += "]}";
+		obj += "],";
+
+		obj += cmdJson();
+		obj += "}";
 		return obj;
 	}
 };
@@ -490,6 +884,7 @@ public:
 
 	void addCommand(std::unique_ptr<ASTInlineText> & e) {
 		command = std::move(e);
+		command->parent = this;
 	}
 
 	std::string toJson() override {
@@ -504,8 +899,49 @@ public:
 		if (elements.size() != 0)
 			obj.erase(std::prev(obj.end()));
 
-		obj += "]}";
+		obj += "],";
+
+		obj += cmdJson();
+		obj += "}";
 		return obj;
 	}
 
+};
+
+/*
+	Represents a Info Block. Everything should be able to fit in this object
+*/
+class ASTInfoBlock : public _ASTBlockElement {
+protected:
+
+	std::string className() {return "ASTInfoBlock";}
+
+	std::string type;
+	bool sym;
+
+public:
+
+	ASTInfoBlock() {}
+
+	ASTInfoBlock(std::string type, bool sym = false) : type(type), sym(sym) {}
+
+	std::string toJson() override {
+		std::string obj = "{\"class\": \"" + className() + "\",";
+		obj += "\"type\": \"" + type + "\",";
+		obj += "\"sym\": " + std::to_string(sym) + ",";
+		obj += "\"elements\": [";
+
+		for (auto & e : elements) {
+			obj += e->toJson() + ",";
+		}
+
+		if (elements.size() != 0)
+			obj.erase(std::prev(obj.end()));
+
+		obj += "],";
+
+		obj += cmdJson();
+		obj += "}";
+		return obj;
+	}
 };

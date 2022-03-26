@@ -71,6 +71,12 @@ public:
 class InlineModifierHandler : public InlineHandler {
 protected:
 
+	/*
+		parses everything of syntax <Keyword>, <Space>, <Commands>, <delim>
+		@return { Keyword, Commands, Success }
+	*/
+	std::tuple<std::string, std::string, bool> parseLink(Parser * lex, char delim);
+
 public:
 
 	InlineModifierHandler() {}

@@ -16,6 +16,7 @@ enum Token : int {
 	tokSpace = -4, // lastString contains ' ', lastInt contains amount of spaces
 	tokNewline = -5, // Newline Character read (\n)
 	tokSym = -6, // Indicates formatting Symbol, lastString contains it, lastInt contains amount
+	_tokEscape = -7, // Used internally for escape sequences. Will never be the state of lastToken after gettok()
 };
 
 class ParserHandler;
@@ -64,6 +65,7 @@ public:
 	int peekchar();
 
 	Token gettok();
+	Token gettok(int amount);
 	void getchar();
 	int currchar();
 
@@ -72,9 +74,9 @@ public:
 	/*
 		Turns str into a valid id. This includes converting to lowercase, replacing space with '-'
 		@param str String to convert
-		@result the idified string, and whether it was successful. Returns empty string on unsuccessful
+		@result the idified string
 	*/
-	std::tuple<std::string, bool> make_id(std::string str);
+	std::string make_id(std::string str);
 
 	/*
 		@param allowRange Whether delimiter is allowed if in ""
@@ -87,7 +89,7 @@ public:
 		Reads Text literally (no Sym or Space collapsing) until condition is met or EOF/EOL occured
 		Doesnt consume ending token if condition caused end, does consume newline
 		@param condition returns true if reading should end
-		@return String read and whether it ended on EOF/EOL (=true) or condition (=false)
+		@return String read and whether it ended on condition (=true) or EOF/EOL (=false)
 	*/
 	std::tuple<std::string, bool> readUntil(std::function<bool(Parser *)> condition);
 
@@ -105,7 +107,7 @@ public:
 		@param allowInlineStyling Whether other inline styling elements are allowed. Printed as literal text
 		@param inlineSymReturn Returns if this Inline-Sym occures
 		@param symReturn Returns if this Sym occures
-		@returns If second parameter is true, it ended on linebreak. If False it ended on symReturn or unknown Symbol (Only if unknownAsText == false)
+		@returns If second parameter is true, it ended on linebreak (But didn't consume it!). If False it ended on symReturn or unknown Symbol (Only if unknownAsText == false)
 	*/
 	std::tuple<std::unique_ptr<ASTInlineText>, bool> parseText(
 		bool allowLb = true, bool unknownAsText = true, bool allowInlineStyling = true, int symReturn = 0);

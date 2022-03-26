@@ -81,10 +81,10 @@ int main(int argc, char *argv[]) {
 	parser.addHandler<UnorderedListHandler>("H_ulist");
 	parser.addHandler<OrderedListHandler>("H_olist");
 	parser.addHandler<HeadingHandler>("H_heading");
+	parser.addHandler<InfoBlockHandler>("H_infoblock");
 	parser.addHandler<BlockquoteHandler>("H_blockquote");
 	parser.addHandler<HLineHandler>("H_hline");
 	parser.addHandler<CodeHandler>("H_code");
-	
 
 	parser.addInlineHandler<InlineTemplateHandler<'*'>>("I_bold");
 	parser.addInlineHandler<InlineTemplateHandler<'/'>>("I_italic");
@@ -103,7 +103,6 @@ int main(int argc, char *argv[]) {
 	parser.addHandlerAlias("H_default", "H_paragraph");
 
 
-
 	parser.parseDocument();
 
 	std::ofstream json("AST.json");
@@ -111,6 +110,7 @@ int main(int argc, char *argv[]) {
 	json << parser.getDocument()->toJson();
 
 	json.close();
+
 
 	return 0;
 }

@@ -32,6 +32,9 @@ Token Parser::peektok(int chr) {
 		return tokSpace;
 	case '\n':
 		return tokNewline;
+	case '\\':
+		// Escape Char
+		return _tokEscape;
 	default:
 		return tokText;
 	}
@@ -52,6 +55,25 @@ Token Parser::gettok() {
 	lastToken = peektok();
 
 	switch (lastToken) {
+	case _tokEscape:
+		// Escape Character
+		// Valid Escape Character?
+		if (symbols.count(peekchar()) == 1) {
+			_lastChar = input.get(); // Ignore '\ ', proceed as Text
+		}
+		else {
+			switch (peekchar()) {
+				case 'n':
+					_lastChar = input.get(); // now contains n
+					_lastChar = '\n';
+					break;
+				case '\\': // Consume and treat as normal text
+					_lastChar = input.get();
+				default: break;
+			}
+		}
+		lastToken = tokText;
+		// Falls through to treat as normal text
 	case tokText:
 		lastString = _lastChar;
 		while (peektok(_lastChar = input.get()) == tokText)
@@ -74,10 +96,23 @@ Token Parser::gettok() {
 		while ((_lastChar = input.get()) == lastString.front()) 
 			lastInt++;
 		return lastToken;
+	
 	default:
 		_lastChar = input.get(); // Consume current char
 		return lastToken;
 	}
+}
+
+Token Parser::gettok(int amount) {
+	if (lastToken == tokSym || lastToken == tokSpace) {
+		if (lastInt > amount)
+			lastInt -= amount;
+		else
+			gettok();
+		return lastToken;
+	}
+
+	return gettok(); // always consume on text
 }
 
 void Parser::getchar() {
@@ -116,7 +151,7 @@ void Parser::puttok() {
 	}
 }
 
-std::tuple<std::string, bool> Parser::make_id(std::string str) {
+std::string Parser::make_id(std::string str) {
 	std::string id;
 	for (auto e : str) {
 		// Letters
@@ -138,7 +173,7 @@ std::tuple<std::string, bool> Parser::make_id(std::string str) {
 		if (e == ' ')
 			id += '-';
 	}
-	return make_tuple(id, true);
+	return id;
 }
 
 std::tuple<std::string, bool> Parser::extractText(bool allowRange, std::string delimiter) {
@@ -172,7 +207,7 @@ std::tuple<std::string, bool> Parser::extractText(bool allowRange, std::string d
 		}
 		if (_lastChar == '\\') {
 			// Escape Sequence
-			getchar(); // Consume \ 
+			getchar(); // Consume '\'
 			result += escaped(_lastChar);
 			getchar(); // Consume escaped char
 		}
@@ -196,7 +231,7 @@ std::tuple<std::string, bool> Parser::extractText(bool allowRange, std::string d
 
 std::tuple<std::string, bool> Parser::readUntil(std::function<bool(Parser *)> condition) {
 	if (!condition)
-		return make_tuple("", false);
+		return make_tuple("", true);
 	std::string res;
 
 	while (
@@ -215,9 +250,9 @@ std::tuple<std::string, bool> Parser::readUntil(std::function<bool(Parser *)> co
 	if (lastToken == tokNewline || lastToken == tokEOF) {
 		if (lastToken == tokNewline)
 			gettok(); // Consume Newline
-		return make_tuple(res, true);
+		return make_tuple(res, false);
 	}
-	return make_tuple(res, false);
+	return make_tuple(res, true);
 }
 
 unique_ptr<ParserHandler> Parser::findNextHandler() {
@@ -396,7 +431,7 @@ tuple<unique_ptr<ASTInlineText>, bool> Parser::parseText(
 			
 			// So it is a tokSym
 
-			if (lastString.front() == symReturn)
+			if (lastString[0] == symReturn)
 				return make_tuple(move(text), false);
 
 			if (allowInlineStyling) {
@@ -469,7 +504,7 @@ unique_ptr<ASTPlainText> Parser::_parsePlainText() {
 	return make_unique<ASTPlainText>(str);
 }
 
-// ----- InlineHandler ----- \\ 
+// ----- InlineHandler ----- //
 
 std::unique_ptr<InlineHandler> InlineHandler::createNew() {
 	return std::make_unique<InlineHandler>();
@@ -491,7 +526,7 @@ std::unique_ptr<_ASTElement> InlineHandler::finish(Parser * lex) {
 	return nullptr;
 }
 
-// ----- ParserHandler ----- \\ 
+// ----- ParserHandler ----- //
 
 std::unique_ptr<ParserHandler> ParserHandler::createNew() {
 	return std::make_unique<ParserHandler>();
