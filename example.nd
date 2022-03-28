@@ -4,6 +4,15 @@
 
 There are quite /some/ [things](google.com) to concider when using *strong* text
 
->i> as you might remenber
+```cpp
+void main() {
+  int i = 2;
+  break;
+  if  (b < 2)
+  return true;
+}
+```
+
+>i> as you might remember 5 < 6
   
   But sometimes it is neccessary

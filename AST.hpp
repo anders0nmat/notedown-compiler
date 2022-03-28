@@ -198,11 +198,11 @@ public:
 	*/
 	virtual void merge(ASTCommand & other) {
 		id = other.id;
-		classes += " " + other.classes;
+		classes += (classes.empty() ? "" : " ") + other.classes;
 		title = other.title;
 		for (auto & p : other.attributes)
 			attributes[p.first] = p.second;
-		css += " " + other.css;
+		css += (css.empty() ? "" : " ") + other.css;
 		for (auto & e : other.functions)
 			functions.push_back(e);
 		for (auto & p : other.flags)
@@ -214,11 +214,11 @@ public:
 	*/
 	virtual void merge(ASTCommand && other) {
 		id = other.id;
-		classes += " " + other.classes;
+		classes += (classes.empty() ? "" : " ") + other.classes;
 		title = other.title;
 		for (auto & p : other.attributes)
 			attributes[p.first] = p.second;
-		css += " " + other.css;
+		css += (css.empty() ? "" : " ") + other.css;
 		for (auto & e : other.functions)
 			functions.push_back(e);
 		for (auto & p : other.flags)
@@ -228,15 +228,15 @@ public:
 	virtual std::string constructHeader() {
 		std::string header;
 		if (id != "")
-			header += "id=\"" + id + "\" ";
+			header += " id=\"" + id + "\"";
 		if (classes != "")
-			header += "class=\"" + classes + "\" ";
+			header += " class=\"" + classes + "\"";
 		if (title != "")
-			header += "title=\"" + title + "\" ";
+			header += " title=\"" + title + "\"";
 		if (css != "")
-			header += "style=\"" + css + "\" ";
+			header += " style=\"" + css + "\"";
 		for (auto & p : attributes)
-			header += p.first + "=\"" + p.second + "\" ";
+			header += " " + p.first + "=\"" + p.second + "\"";
 		return header;
 	}
 
@@ -444,7 +444,11 @@ public:
 	}
 
 	std::string getHtml() override {
-		return _ASTListElement<_ASTInlineElement>::getHtml();
+		std::string html;
+		for (auto & e : elements) {
+			html += e->getHtml();
+		}
+		return html;
 	}
 };
 
@@ -483,7 +487,24 @@ public:
 	}
 
 	std::string getHtml() override {
-		return content;
+		std::string cnt;
+		for (auto c : content) {
+			switch (c) {
+				case '&':
+					cnt += "&amp;";
+					break;
+				case '<':
+					cnt += "&lt;";
+					break;
+				case '>':
+					cnt += "&gt;";
+					break;
+				default:
+					cnt += c;
+			}
+		}
+
+		return cnt;
 	}
 };
 
@@ -678,7 +699,7 @@ public:
 	}
 
 	std::string getHtml() override {
-		std::string html = "<a ";
+		std::string html = "<a";
 		commands.attributes["href"] = url;
 		html += commands.constructHeader();
 		html += ">";
@@ -720,7 +741,7 @@ public:
 	}
 
 	std::string getHtml() override {
-		std::string html = "<img ";
+		std::string html = "<img";
 		commands.attributes["src"] = url;
 		commands.attributes["alt"] = content->literalText();
 		html += commands.constructHeader();
@@ -761,7 +782,7 @@ public:
 	}
 
 	std::string getHtml() override {
-		std::string html = "<a ";
+		std::string html = "<a";
 		commands.attributes["href"] = "#" + id;
 		commands.addClass("footnote");
 		html += commands.constructHeader();
@@ -804,7 +825,7 @@ public:
 	}
 
 	std::string getHtml() override {
-		std::string html = "<a ";
+		std::string html = "<a";
 		commands.attributes["href"] = "#" + id;
 		commands.addClass("h-link");
 		html += commands.constructHeader();
@@ -944,7 +965,6 @@ public:
 
 	std::string getHtml() override {
 		std::string html = "<h" + std::to_string(level);
-		html += " ";
 		html += commands.constructHeader();
 		html += ">";
 		html += content->getHtml();
@@ -980,9 +1000,9 @@ protected:
 
 public:
 	std::string getHtml() override {
-		std::string html = "<p ";
+		std::string html = "<p";
 		html += commands.constructHeader();
-		html += ">";
+		html += ">\n";
 		html += _ASTBlockElement::getHtml();
 		html += "</p>";
 		return html;
@@ -1025,9 +1045,11 @@ public:
 	}
 
 	std::string getHtml() override {
-		std::string html = "<blockquote ";
+		std::string html = "<blockquote";
+		if (centered)
+			commands.addClass("center");
 		html += commands.constructHeader();
-		html += ">";
+		html += ">\n";
 		html += _ASTBlockElement::getHtml();
 		html += "</blockquote>";
 		return html;
@@ -1067,7 +1089,7 @@ public:
 	}
 
 	std::string getHtml() override {
-		std::string html = "<li ";
+		std::string html = "<li";
 		html += commands.constructHeader();
 		html += ">";
 		html += _ASTBlockElement::getHtml();
@@ -1086,9 +1108,9 @@ protected:
 
 public:
 	std::string getHtml() override {
-		std::string html = "<ul ";
+		std::string html = "<ul";
 		html += commands.constructHeader();
-		html += ">";
+		html += ">\n";
 		html += _ASTListElement<ASTListElement>::getHtml();
 		html += "</ul>";
 		return html;
@@ -1106,9 +1128,9 @@ protected:
 public:
 
 	std::string getHtml() override {
-		std::string html = "<ol ";
+		std::string html = "<ol";
 		html += commands.constructHeader();
-		html += ">";
+		html += ">\n";
 		html += _ASTListElement<ASTListElement>::getHtml();
 		html += "</ol>";
 		return html;
@@ -1156,9 +1178,9 @@ public:
 	}
 
 	std::string getHtml() override {
-		std::string html = "<pre><code ";
+		std::string html = "<pre><code";
 		html += commands.constructHeader();
-		html += ">";
+		html += ">\n";
 		html += _ASTBlockElement::getHtml();
 		html += "</code></pre>";
 		return html;
@@ -1203,12 +1225,12 @@ public:
 	}
 
 	std::string getHtml() override {
-		std::string html = "<blockquote ";
+		std::string html = "<blockquote";
 		commands.addClass(type);
 		if (sym)
 			commands.addClass("sym");
 		html += commands.constructHeader();
-		html += ">";
+		html += ">\n";
 		html += _ASTBlockElement::getHtml();
 		html += "</blockquote>";
 		return html;

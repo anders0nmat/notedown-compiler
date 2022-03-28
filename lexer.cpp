@@ -432,6 +432,7 @@ tuple<unique_ptr<ASTInlineText>, bool> Parser::parseText(
 
 unique_ptr<_ASTInlineElement> Parser::_parseLine(bool allowLb) {
 	switch (lastToken) {
+		case tokNumber:
 		case tokText:
 			return move(_parsePlainText());
 		case tokSpace:

@@ -14,6 +14,8 @@
 
 /*
 	Class for compiling notedown documents into html
+
+	See examples/ for example of use
 */
 class NotedownCompiler {
 protected:
@@ -40,45 +42,111 @@ public:
 	
 	NotedownCompiler() {}
 
+	/**
+	 * Constructs the specified handler 
+	 * @param <Cl> Class inheriting ParserHandler
+	 * @param name A unique name for identifing 
+	 * @return Success, if name is unique
+	 */
 	template<class Cl>
 	bool addHandler(std::string name) {
 		return addHandler(name, std::make_unique<Cl>());
 	}
+
+	/**
+	 * Inserts handler with unique name
+	 * @param name A unique name for identifing
+	 * @param handler A unique_ptr containing a Class inheriting ParserHandler
+	 * @return Success, if name is unique
+	 */
 	bool addHandler(std::string name, std::unique_ptr<ParserHandler> handler);
+
+	/**
+	 * Registers an alternative name
+	 * @param alias A unique alias for identifing
+	 * @param name The name the alias is for
+	 * @return Success, if alias is unique
+	 */
 	bool addHandlerAlias(std::string alias, std::string name);
 
+	/**
+	 * Constructs the specified inline handler 
+	 * @param <Cl> Class inheriting InlineHandler
+	 * @param name A unique name for identifing 
+	 * @return Success, if name is unique
+	 */
 	template<class Cl>
 	bool addInlineHandler(std::string name) {
 		return addInlineHandler(name, std::make_unique<Cl>());
 	}
+
+	/**
+	 * Inserts inline handler with unique name
+	 * @param name A unique name for identifing
+	 * @param handler A unique_ptr containing a Class inheriting InlineHandler
+	 * @return Success, if name is unique
+	 */
 	bool addInlineHandler(std::string name, std::unique_ptr<InlineHandler> handler);
+
+	/*
+		Registers an alternative name
+		@param alias A unique alias for identifing
+		@param name The name the alias is for
+		@return Success, if alias is unique
+	*/
 	bool addInlineHandlerAlias(std::string alias, std::string name);
 
+	/**
+	 * Default handlers are all handlers needed to support defined features
+
+	 * See doc/syntax-elements.md
+	 */
 	void addDefaultHandlers();
 
+	/**
+	 * Parse filename and add created document to list of documents
+	 * @param filename A valid filename containing Notedown Syntax
+	 */
 	void addFile(std::string filename);
-	void addFile(std::initializer_list<std::string> filenames, bool multithread);
+	/**
+	 * Parse filenames and add to document list (in the order specified).
+	 * @param filenames List of valid filenames
+	 * @param multithread Whether each file should be parsed with a separate thread (can speed up compilation)
+	 */
+	void addFile(std::initializer_list<std::string> filenames, bool multithread = true);
 
+	/*
+		Compiles all documents to html.
+		@return Pointer to stringbuf, valid until next call to a getHtml-Method
+	*/
 	std::stringbuf * getRawHtml();
+	/**
+	 * Compiles specified document to html
+	 * @param index Index of document (identical to order added)
+	 * @return Pointer to stringbuf, valid until next call to a getHtml-Method
+	 */
 	std::stringbuf * getRawHtml(size_t index);
 
+	/**
+	 * Get document AST for direct manipulation
+	 * @param index Index of document (identical to order added)
+	 * @return Reference to pointer of ASTDocument
+	 */
 	std::unique_ptr<ASTDocument> & getDocument(size_t index);
 };
 
-
 namespace Notedown {
-	/*
-		Converts raw into a valid id.
-		This includes converting it to lowercase, replacing Spaces with '-'
-		and stripping invalid characters.
-		Valid Characters: A-Z a-z 0-9 SPACE _ -
-	*/
+	/**
+	 * Converts raw into a valid id.
+	 * This includes converting it to lowercase, replacing Spaces with '-'
+	 * and stripping invalid characters.
+	 * Valid Characters: A-Z a-z 0-9 SPACE _ -
+	 */
 	std::string makeId(std::string raw);
 
-	/*
-		Checks whether id is a valid id string
-		Valid id characters: a-z 0-9 _ -
-	*/
+	/**
+	 * Checks whether id is a valid id string
+	 * Valid id characters: a-z 0-9 _ -
+	 */
 	bool isId(std::string id);
-
 }

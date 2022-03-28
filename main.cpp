@@ -1,9 +1,6 @@
 #include <iostream>
 #include <fstream>
 
-// #include "lexer.hpp"
-// #include "parser_handler.hpp"
-// #include "inline_handler.hpp"
 #include "notedown-compiler.hpp"
 
 /*
@@ -78,14 +75,10 @@
 */
 
 int main(int argc, char *argv[]) {
-	// Parser parser("example.nd");
 
 	NotedownCompiler compiler;
 	compiler.addDefaultHandlers();
 	compiler.addFile("example.nd");
-
-
-	// parser.parseDocument();
 
 	std::ofstream html("example.html");
 	
