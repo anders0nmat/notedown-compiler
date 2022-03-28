@@ -1,8 +1,35 @@
 #include "inline_handler.hpp"
 #include "parser_handler.hpp"
+#include "notedown-templates.hpp"
 
-void Parser::addDefaultHandlers() {
+// void Parser::addDefaultHandlers() {
 	
+// }
+
+void NotedownCompiler::addDefaultHandlers() {
+	addHandler<UnorderedListHandler>("H_ulist");
+	addHandler<OrderedListHandler>("H_olist");
+	addHandler<HeadingHandler>("H_heading");
+	addHandler<InfoBlockHandler>("H_infoblock");
+	addHandler<BlockquoteHandler>("H_blockquote");
+	addHandler<HLineHandler>("H_hline");
+	addHandler<CodeHandler>("H_code");
+
+	addInlineHandler<InlineTemplateHandler<'*'>>("I_bold");
+	addInlineHandler<InlineTemplateHandler<'/'>>("I_italic");
+	addInlineHandler<InlineTemplateHandler<'_'>>("I_underlined");
+	addInlineHandler<InlineTemplateHandler<'~'>>("I_strikethrough");
+	addInlineHandler<InlineTemplateHandler<'='>>("I_highlight");
+
+	addInlineHandler<InlineSmileyHandler>("I_emoji");
+
+	addInlineHandler<InlineCodeHandler>("I_code");
+
+	addInlineHandler<InlineModifierHandler>("I_link");
+
+
+	addHandler<ParagraphHandler>("H_paragraph");
+	addHandlerAlias("H_default", "H_paragraph");
 }
 
 // ------------------------------------ //
@@ -654,7 +681,7 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineModifierHandler::hand
 				return std::make_tuple(std::move(content), true);
 			}
 			result = std::make_unique<ASTModifierLink>(keyword, content);
-			result->addCommand(std::make_unique<ASTCommand>(command));
+			result->addCommand(ASTCommand(command));
 			return std::make_tuple(std::move(result), true);
 		case '!':
 			lex->gettok(); // Consume !
@@ -675,7 +702,7 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineModifierHandler::hand
 				return std::make_tuple(std::move(content), true);
 			}
 			result = std::make_unique<ASTModifierImage>(keyword, content);
-			result->addCommand(std::make_unique<ASTCommand>(command));
+			result->addCommand(ASTCommand(command));
 			return std::make_tuple(std::move(result), true);
 		case '^':
 			lex->gettok(); // Consume ^
@@ -696,10 +723,10 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineModifierHandler::hand
 				return std::make_tuple(std::move(content), true);
 			}
 			result = std::make_unique<ASTModifierFootnote>(keyword, content);
-			result->addCommand(std::make_unique<ASTCommand>(command));
+			result->addCommand(ASTCommand(command));
 			return std::make_tuple(std::move(result), true);
 		case '#':
-			keyword = lex->make_id(content->literalText());
+			keyword = Notedown::makeId(content->literalText());
 			lex->gettok(); // Consume #
 			if (lex->lastToken != tokSym || lex->lastString[0] != '(' || lex->lastInt != 1) {
 				// Valid but no other specification
@@ -723,7 +750,7 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineModifierHandler::hand
 			lex->gettok(1);
 			// Valid, URL, Command and Type populated
 			result = std::make_unique<ASTModifierHeadingLink>(keyword, content);
-			result->addCommand(std::make_unique<ASTCommand>(command));
+			result->addCommand(ASTCommand(command));
 			return std::make_tuple(std::move(result), true);
 		case '<':
 			lex->gettok(); // Consume <
@@ -744,7 +771,7 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineModifierHandler::hand
 				return std::make_tuple(std::move(content), true);
 			}
 			result = std::make_unique<ASTModifierReplace>(keyword, content);
-			result->addCommand(std::make_unique<ASTCommand>(command));
+			result->addCommand(ASTCommand(command));
 			return std::make_tuple(std::move(result), true);
 		case '{':
 			lex->gettok(); // Consume {
@@ -764,7 +791,7 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineModifierHandler::hand
 				return std::make_tuple(std::move(content), true);
 			}
 			lex->gettok(1);
-			result->addCommand(std::make_unique<ASTCommand>(command));
+			result->addCommand(ASTCommand(command));
 			return std::make_tuple(std::move(content), true);
 		default:
 			// Error, not valid

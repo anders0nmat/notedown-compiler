@@ -8,6 +8,9 @@
 
 #include "AST.hpp"
 
+#include "notedown-compiler.hpp"
+#include "notedown-templates.hpp"
+
 enum Token : int {
 	
 	tokEOF = -1, // End of File
@@ -19,35 +22,36 @@ enum Token : int {
 	_tokEscape = -7, // Used internally for escape sequences. Will never be the state of lastToken after gettok()
 };
 
-class ParserHandler;
-class InlineHandler;
-
 /*
 	Wrapper class for creating an AST
 */
 class Parser {
 protected:
-	std::ifstream input;
+	NotedownCompiler * compiler;
 
-	std::unordered_map<std::string, size_t> handlerAlias;
-	std::vector<std::unique_ptr<ParserHandler>> handlerList;
+	std::istream * input;
 
-	std::unordered_set<int> symbols;
+	// std::unordered_map<std::string, size_t> handlerAlias;
+	// std::vector<std::unique_ptr<ParserHandler>> handlerList;
 
-	std::unordered_map<std::string, size_t> inlineHandlerAlias;
-	std::vector<std::unique_ptr<InlineHandler>> inlineHandlerList;
+	// std::unordered_set<int> symbols;
+
+	// std::unordered_map<std::string, size_t> inlineHandlerAlias;
+	// std::vector<std::unique_ptr<InlineHandler>> inlineHandlerList;
 
 	std::unique_ptr<ParserHandler> _lastHandler = nullptr;
 	std::unique_ptr<ASTDocument> document = nullptr;
 
 	int _lastChar = 0;
 
+	std::vector<std::unique_ptr<ASTDocument>> documents;
+
 	std::unique_ptr<ASTPlainText> _parsePlainText();
 	std::unique_ptr<_ASTInlineElement> _parseLine(bool allowLb = true);
 
 	void puttok();
 
-	void addSymbols(std::string str);
+	// void addSymbols(std::string str);
 
 public:
 
@@ -56,7 +60,7 @@ public:
 	Token lastToken;
 
 
-	Parser(std::string filename);
+	Parser(NotedownCompiler * compiler, std::istream * input) : compiler(compiler), input(input) {}
 	~Parser() = default;
 
 	Token peektok(int chr);
@@ -70,13 +74,6 @@ public:
 	int currchar();
 
 	std::string escaped(int chr);
-
-	/*
-		Turns str into a valid id. This includes converting to lowercase, replacing space with '-'
-		@param str String to convert
-		@result the idified string
-	*/
-	std::string make_id(std::string str);
 
 	/*
 		@param allowRange Whether delimiter is allowed if in ""
@@ -114,21 +111,21 @@ public:
 
 	// std::tuple<std::unique_ptr<ASTInlineText>, bool> parseText(allowLb, unknownAsText, allowInlineStyling, inlineSymReturn, symReturn)
 
-	template<class Cl>
-	bool addHandler(std::string name) {
-		return addHandler(name, std::make_unique<Cl>());
-	}
+	// template<class Cl>
+	// bool addHandler(std::string name) {
+	// 	return addHandler(name, std::make_unique<Cl>());
+	// }
 
-	bool addHandler(std::string name, std::unique_ptr<ParserHandler> handler);
-	bool addHandlerAlias(std::string alias, std::string name);
+	// bool addHandler(std::string name, std::unique_ptr<ParserHandler> handler);
+	// bool addHandlerAlias(std::string alias, std::string name);
 
-	template<class Cl>
-	bool addInlineHandler(std::string name) {
-		return addInlineHandler(name, std::make_unique<Cl>());
-	}
+	// template<class Cl>
+	// bool addInlineHandler(std::string name) {
+	// 	return addInlineHandler(name, std::make_unique<Cl>());
+	// }
 
-	bool addInlineHandler(std::string name, std::unique_ptr<InlineHandler> handler);
-	bool addInlineHandlerAlias(std::string alias, std::string name);
+	// bool addInlineHandler(std::string name, std::unique_ptr<InlineHandler> handler);
+	// bool addInlineHandlerAlias(std::string alias, std::string name);
 
 	/*
 		Has consumed newline if second return value is true.
@@ -141,52 +138,8 @@ public:
 	void parseDocument();
 	std::unique_ptr<ASTDocument> & getDocument();
 
-	void addDefaultHandlers();
-};
+	// bool parseFile(std::string filename);
+	// bool parseStream(std::istream & stream);
 
-
-/*
-	Template Class for Inline Parser Hooks
-*/
-class InlineHandler {
-protected:
-
-public:
-
-	InlineHandler() {}
-
-	virtual ~InlineHandler() {}
-
-	virtual std::unique_ptr<InlineHandler> createNew();
-
-	virtual std::string triggerChars();
-
-	virtual bool canHandle(Parser * lex);
-
-	virtual std::tuple<std::unique_ptr<_ASTInlineElement>, bool> handle(Parser * lex);
-
-	virtual std::unique_ptr<_ASTElement> finish(Parser * lex);
-};
-
-/*
-	Template Class for Parser Hooks
-*/
-class ParserHandler {
-protected:
-
-public:
-
-	ParserHandler() {}
-
-	virtual ~ParserHandler() {}
-
-	virtual std::unique_ptr<ParserHandler> createNew();
-
-	virtual std::string triggerChars();
-
-	virtual bool canHandle(Parser * lex);
-
-	virtual std::tuple<std::unique_ptr<_ASTElement>, bool> handle(Parser * lex);
-
-	virtual std::unique_ptr<_ASTElement> finish(Parser * lex);
+	// void addDefaultHandlers();
 };

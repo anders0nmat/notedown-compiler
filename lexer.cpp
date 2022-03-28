@@ -11,17 +11,10 @@ using std::make_tuple;
 using std::move;
 using std::make_unique;
 
-Parser::Parser(string filename) {
-	input = std::ifstream(filename, std::ifstream::in);
-
-	if (!input.is_open())
-		throw "File not found";
-}
-
 Token Parser::peektok(int chr) {
-	if (input.eof()) return tokEOF;
+	if (input->eof()) return tokEOF;
 
-	if (symbols.count(chr) == 1)
+	if (compiler->symbols.count(chr) == 1)
 		return tokSym;
 
 	if (isdigit(chr))
@@ -45,12 +38,12 @@ inline Token Parser::peektok() {
 }
 
 inline int Parser::peekchar() {
-	return input.peek();
+	return input->peek();
 }
 
 Token Parser::gettok() {
 	if (_lastChar == 0)
-		_lastChar = input.get();
+		_lastChar = input->get();
 
 	lastToken = peektok();
 
@@ -58,17 +51,17 @@ Token Parser::gettok() {
 	case _tokEscape:
 		// Escape Character
 		// Valid Escape Character?
-		if (symbols.count(peekchar()) == 1) {
-			_lastChar = input.get(); // Ignore '\ ', proceed as Text
+		if (compiler->symbols.count(peekchar()) == 1) {
+			_lastChar = input->get(); // Ignore '\ ', proceed as Text
 		}
 		else {
 			switch (peekchar()) {
 				case 'n':
-					_lastChar = input.get(); // now contains n
+					_lastChar = input->get(); // now contains n
 					_lastChar = '\n';
 					break;
 				case '\\': // Consume and treat as normal text
-					_lastChar = input.get();
+					_lastChar = input->get();
 				default: break;
 			}
 		}
@@ -76,16 +69,16 @@ Token Parser::gettok() {
 		// Falls through to treat as normal text
 	case tokText:
 		lastString = _lastChar;
-		while (peektok(_lastChar = input.get()) == tokText)
+		while (peektok(_lastChar = input->get()) == tokText)
 			lastString += _lastChar;
 		return lastToken;
 	case tokNumber:
 		lastString = _lastChar;
-		while (isdigit(_lastChar = input.get()))
+		while (isdigit(_lastChar = input->get()))
 			lastString += _lastChar;
 		if (_lastChar == '.') {
 			lastString += _lastChar;
-			_lastChar = input.get();
+			_lastChar = input->get();
 		}
 		lastInt = std::stoi(lastString);
 		return lastToken;
@@ -93,12 +86,12 @@ Token Parser::gettok() {
 	case tokSym:
 		lastInt = 1;
 		lastString = _lastChar;
-		while ((_lastChar = input.get()) == lastString.front()) 
+		while ((_lastChar = input->get()) == lastString.front()) 
 			lastInt++;
 		return lastToken;
 	
 	default:
-		_lastChar = input.get(); // Consume current char
+		_lastChar = input->get(); // Consume current char
 		return lastToken;
 	}
 }
@@ -116,7 +109,7 @@ Token Parser::gettok(int amount) {
 }
 
 void Parser::getchar() {
-	_lastChar = input.get();
+	_lastChar = input->get();
 }
 
 int Parser::currchar() {
@@ -138,42 +131,17 @@ void Parser::puttok() {
 	switch (lastToken) {
 		case tokNumber:
 		case tokText:
-			input.seekg(-lastString.length() - 1, std::ios_base::cur);
+			input->seekg(-lastString.length() - 1, std::ios_base::cur);
 			break;
 		case tokSpace:
 		case tokSym:
-			input.seekg(-lastInt - 1, std::ios_base::cur);
+			input->seekg(-lastInt - 1, std::ios_base::cur);
 			break;
 		case tokNewline:
 		case tokEOF:
 		default:
-			input.seekg(-2, std::ios_base::cur);
+			input->seekg(-2, std::ios_base::cur);
 	}
-}
-
-std::string Parser::make_id(std::string str) {
-	std::string id;
-	for (auto e : str) {
-		// Letters
-		if (65 <= e && e <= 90)
-			// Uppercase letter
-			id += e + 32;
-		if (97 <= e && e <= 122)
-			id += e;
-
-		// Numbers
-		if (48 <= e && e <= 57)
-			id += e;
-
-		// Allowed for html compatibility
-		if (e == '_' || e == '-')
-			id += e;
-
-		// Space convert
-		if (e == ' ')
-			id += '-';
-	}
-	return id;
 }
 
 std::tuple<std::string, bool> Parser::extractText(bool allowRange, std::string delimiter) {
@@ -192,7 +160,7 @@ std::tuple<std::string, bool> Parser::extractText(bool allowRange, std::string d
 	std::string result;
 
 	while (true) {
-		if (_lastChar == '\n' || input.eof())
+		if (_lastChar == '\n' || input->eof())
 			return make_tuple("", true);
 		if (!rangeStarted && delimiter.find_first_of(_lastChar) != std::string::npos) {
 			// End of Read
@@ -215,12 +183,12 @@ std::tuple<std::string, bool> Parser::extractText(bool allowRange, std::string d
 	}
 
 	while (delimiter.find_first_of(_lastChar) == std::string::npos &&
-		_lastChar != '\n' && !input.eof()) {
+		_lastChar != '\n' && !input->eof()) {
 		getchar();
 	}
 
 	// Next Char is delimiter or Newline or EOF
-	if (_lastChar == '\n' && input.eof())
+	if (_lastChar == '\n' && input->eof())
 		return make_tuple("", true);
 
 	return make_tuple(result, false);
@@ -256,7 +224,7 @@ std::tuple<std::string, bool> Parser::readUntil(std::function<bool(Parser *)> co
 }
 
 unique_ptr<ParserHandler> Parser::findNextHandler() {
-	for (auto & e : handlerList) {
+	for (auto & e : compiler->handlerList) {
 		if (e->canHandle(this))
 			return move(e->createNew());
 	}
@@ -264,15 +232,15 @@ unique_ptr<ParserHandler> Parser::findNextHandler() {
 }
 
 unique_ptr<ParserHandler> Parser::findNextHandler(string name) {
-	auto p = handlerAlias.find(name);
-	if (p != handlerAlias.end()) {
-		return move(handlerList[p->second]->createNew());
+	auto p = compiler->handlerAlias.find(name);
+	if (p != compiler->handlerAlias.end()) {
+		return move(compiler->handlerList[p->second]->createNew());
 	}
 	return nullptr;
 }
 
 unique_ptr<InlineHandler> Parser::findNextInlineHandler() {
-	for (auto & e : inlineHandlerList) {
+	for (auto & e : compiler->inlineHandlerList) {
 		if (e->canHandle(this))
 			return move(e->createNew());
 	}
@@ -280,18 +248,18 @@ unique_ptr<InlineHandler> Parser::findNextInlineHandler() {
 }
 
 unique_ptr<InlineHandler> Parser::findNextInlineHandler(string name) {
-	auto p = inlineHandlerAlias.find(name);
-	if (p != inlineHandlerAlias.end()) {
+	auto p = compiler->inlineHandlerAlias.find(name);
+	if (p != compiler->inlineHandlerAlias.end()) {
 		// auto it = p->second;
-		return move(inlineHandlerList[p->second]->createNew());
+		return move(compiler->inlineHandlerList[p->second]->createNew());
 	}
 	return nullptr;
 }
 
-void Parser::addSymbols(std::string str) {
-	for (auto e : str)
-		symbols.insert(e);
-}
+// void Parser::addSymbols(std::string str) {
+// 	for (auto e : str)
+// 		symbols.insert(e);
+// }
 
 bool Parser::addToDocument(unique_ptr<_ASTElement> element) {
 	bool res = element != nullptr; 
@@ -300,37 +268,37 @@ bool Parser::addToDocument(unique_ptr<_ASTElement> element) {
 	return res;
 }
 
-bool Parser::addHandler(string name, unique_ptr<ParserHandler> handler) {
-	if (handlerAlias.count(name) == 1)
-		return false;
+// bool Parser::addHandler(string name, unique_ptr<ParserHandler> handler) {
+// 	if (handlerAlias.count(name) == 1)
+// 		return false;
 	
-	addSymbols(handler->triggerChars());
-	handlerList.push_back(move(handler));
-	return handlerAlias.emplace(name, handlerList.size() - 1).second;
-}
+// 	addSymbols(handler->triggerChars());
+// 	handlerList.push_back(move(handler));
+// 	return handlerAlias.emplace(name, handlerList.size() - 1).second;
+// }
 
-bool Parser::addHandlerAlias(std::string alias, std::string name) {
-	if (handlerAlias.count(alias) == 1 || handlerAlias.count(name) == 0)
-		return false;
+// bool Parser::addHandlerAlias(std::string alias, std::string name) {
+// 	if (handlerAlias.count(alias) == 1 || handlerAlias.count(name) == 0)
+// 		return false;
 	
-	return handlerAlias.emplace(alias, handlerAlias[name]).second;
-}
+// 	return handlerAlias.emplace(alias, handlerAlias[name]).second;
+// }
 
-bool Parser::addInlineHandler(string name, unique_ptr<InlineHandler> handler) {
-	if (inlineHandlerAlias.count(name) == 1)
-		return 0;
+// bool Parser::addInlineHandler(string name, unique_ptr<InlineHandler> handler) {
+// 	if (inlineHandlerAlias.count(name) == 1)
+// 		return 0;
 	
-	addSymbols(handler->triggerChars());
-	inlineHandlerList.push_back(move(handler));
-	return inlineHandlerAlias.emplace(name, inlineHandlerList.size() - 1).second;
-}
+// 	addSymbols(handler->triggerChars());
+// 	inlineHandlerList.push_back(move(handler));
+// 	return inlineHandlerAlias.emplace(name, inlineHandlerList.size() - 1).second;
+// }
 
-bool Parser::addInlineHandlerAlias(std::string alias, std::string name) {
-	if (inlineHandlerAlias.count(alias) == 1 || inlineHandlerAlias.count(name) == 0)
-		return false;
+// bool Parser::addInlineHandlerAlias(std::string alias, std::string name) {
+// 	if (inlineHandlerAlias.count(alias) == 1 || inlineHandlerAlias.count(name) == 0)
+// 		return false;
 	
-	return inlineHandlerAlias.emplace(alias, inlineHandlerAlias[name]).second;
-}
+// 	return inlineHandlerAlias.emplace(alias, inlineHandlerAlias[name]).second;
+// }
 
 std::tuple<unique_ptr<_ASTElement>, bool> Parser::parseLine(unique_ptr<ParserHandler> & lastHandler) {
 	if (lastToken == tokEOF) {

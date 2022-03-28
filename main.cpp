@@ -1,8 +1,10 @@
 #include <iostream>
+#include <fstream>
 
-#include "lexer.hpp"
-#include "parser_handler.hpp"
-#include "inline_handler.hpp"
+// #include "lexer.hpp"
+// #include "parser_handler.hpp"
+// #include "inline_handler.hpp"
+#include "notedown-compiler.hpp"
 
 /*
 *	--- Adding handlers ---
@@ -76,40 +78,27 @@
 */
 
 int main(int argc, char *argv[]) {
-	Parser parser("example.nd");
+	// Parser parser("example.nd");
 
-	parser.addHandler<UnorderedListHandler>("H_ulist");
-	parser.addHandler<OrderedListHandler>("H_olist");
-	parser.addHandler<HeadingHandler>("H_heading");
-	parser.addHandler<InfoBlockHandler>("H_infoblock");
-	parser.addHandler<BlockquoteHandler>("H_blockquote");
-	parser.addHandler<HLineHandler>("H_hline");
-	parser.addHandler<CodeHandler>("H_code");
-
-	parser.addInlineHandler<InlineTemplateHandler<'*'>>("I_bold");
-	parser.addInlineHandler<InlineTemplateHandler<'/'>>("I_italic");
-	parser.addInlineHandler<InlineTemplateHandler<'_'>>("I_underlined");
-	parser.addInlineHandler<InlineTemplateHandler<'~'>>("I_strikethrough");
-	parser.addInlineHandler<InlineTemplateHandler<'='>>("I_highlight");
-
-	parser.addInlineHandler<InlineSmileyHandler>("I_emoji");
-
-	parser.addInlineHandler<InlineCodeHandler>("I_code");
-
-	parser.addInlineHandler<InlineModifierHandler>("I_link");
+	NotedownCompiler compiler;
+	compiler.addDefaultHandlers();
+	compiler.addFile("example.nd");
 
 
-	parser.addHandler<ParagraphHandler>("H_paragraph");
-	parser.addHandlerAlias("H_default", "H_paragraph");
+	// parser.parseDocument();
 
-
-	parser.parseDocument();
-
-	std::ofstream json("AST.json");
-
-	json << parser.getDocument()->toJson();
-
-	json.close();
+	std::ofstream html("example.html");
+	
+	html << "<!DOCTYPE html>\n";
+	html << "<html>\n";
+	html << "<head>\n";
+	html << "<meta charset=\"utf-8\">\n";
+	html << "</head>\n";
+	html << "<body>\n";
+	html << compiler.getRawHtml();
+	html << "</body>\n";
+	html << "</html>\n";
+	html.close();
 
 
 	return 0;

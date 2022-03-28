@@ -10,16 +10,22 @@ protected:
 	int indentLevel = 0;
 
 	bool canHandleBlock(Parser * lex) {
-		return (content != nullptr) &&
-			(lex->lastToken == tokSpace) &&
-			(indentLevel == 0 || lex->lastInt >= indentLevel);
+		return 
+			(content != nullptr) &&
+			(
+				(lex->lastToken == tokNewline) ||
+				(
+					(lex->lastToken == tokSpace) &&
+					(indentLevel == 0 || lex->lastInt >= indentLevel)
+				)
+			);
 	}
 
 	void handleBlock(Parser * lex) {
 		if (indentLevel == 0)
 			indentLevel = lex->lastInt;
 
-		if (indentLevel == lex->lastInt)
+		if (lex->lastToken == tokSpace && indentLevel == lex->lastInt)
 			lex->gettok();
 		else
 			lex->lastInt -= indentLevel;

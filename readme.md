@@ -2,6 +2,7 @@
 
 - [Notedown](#notedown)
 	- [Description](#description)
+	- [Roadmap](#roadmap)
 	- [Featureset](#featureset)
 		- [Headings](#headings)
 		- [Paragraphs](#paragraphs)
@@ -32,11 +33,20 @@
 		- [Collapsible Headings](#collapsible-headings)
 		- [Replace Content](#replace-content)
 		- [Types of Links](#types-of-links)
-- [complicated heading!"#$%&'()*+,./0123456789:;<=>?@[\]^_`{|}~äß](#complicated-heading0123456789_äß)
 
 ## Description
 
 Notedown is a Quick-HTML-Language heavily inspired by Markdown. It extends on the concepts and removes repeating patterns. The concept is a DRY (Dont Repeat Yourself) language (So there should be only one way to reach a specific goal, while concepts keep consistent), which is optimal for taking notes and experimenting with ideas, while having easy syntax which is also readable without compiling.
+
+## Roadmap
+
+- [x] Enable multithreading
+- [ ] Allow for multiple files to be combined into one
+- [ ] Add HTML Parsing for AST
+- [ ] Add Command Function Registering and Handling
+- [ ] Add html featureset e.g. template files, adding file includes (for css and javascript)
+- [ ] Add Command upchaining for AST
+- [ ] Add HTML Header building for AST
 
 ## Featureset
 
@@ -626,5 +636,3 @@ Imagine content that will be defined <span style="color:red">in the future</span
   that not all of them will look good or even work in all circumstances
 
 ```
-
-# complicated heading!"#$%&'()*+,./0123456789:;<=>?@[\]^_`{|}~äß
