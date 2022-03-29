@@ -1,18 +1,4 @@
-# Important topic
 
-## Second heading
 
-There are quite /some/ [things](google.com) to concider when using *strong* text
+Nothing for now
 
-```cpp
-void main() {
-  int i = 2;
-  break;
-  if  (b < 2)
-  return true;
-}
-```
-
->i> as you might remember 5 < 6
-  
-  But sometimes it is neccessary

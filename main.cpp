@@ -79,20 +79,25 @@ int main(int argc, char *argv[]) {
 	NotedownCompiler compiler;
 	compiler.addDefaultHandlers();
 	compiler.addFile("example.nd");
+	compiler.prepareAST();
+
+	// std::ofstream json("AST.json");
+	// json << compiler.getDocument(0)->toJson();
+	// json.close();
 
 	std::ofstream html("example.html");
 	
-	html << "<!DOCTYPE html>\n";
-	html << "<html>\n";
-	html << "<head>\n";
-	html << "<meta charset=\"utf-8\">\n";
-	html << "</head>\n";
-	html << "<body>\n";
+	// html << "<!DOCTYPE html>\n";
+	// html << "<html>\n";
+	// html << "<head>\n";
+	// html << "<meta charset=\"utf-8\">\n";
+	// html << "</head>\n";
+	// html << "<body>\n";
 	html << compiler.getRawHtml();
-	html << "</body>\n";
-	html << "</html>\n";
+	// html << "</body>\n";
+	// html << "</html>\n";
 	html.close();
-
+	
 
 	return 0;
 }

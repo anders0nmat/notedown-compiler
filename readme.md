@@ -42,7 +42,7 @@ Notedown is a Quick-HTML-Language heavily inspired by Markdown. It extends on th
 
 - [x] Enable multithreading
 - [ ] Allow for multiple files to be combined into one
-- [ ] Add HTML Parsing for AST
+- [x] Add HTML Parsing for AST
 - [ ] Add Command Function Registering and Handling
 - [ ] Add html featureset e.g. template files, adding file includes (for css and javascript)
 - [ ] Add Command upchaining for AST
@@ -56,34 +56,34 @@ untested - Implemented, but not thoroughly tested
 complete - Tested and working (as expected)
 
 - Markdown Features
-  - Headings (90%)
-  - Paragraphs (90%)
-  - Text Styling (bold, italic, underlined, strikethrough) (90%)
-  - Blockquotes (90%)
-  - Ordered and Unordered Lists (90%)
-  - Code (90%)
-  - Horizontal Line (95%)
-  - Links (70%)
-  - Images (70%)
+  - Headings (untested)
+  - Paragraphs (untested)
+  - Text Styling (bold, italic, underlined, strikethrough) (untested)
+  - Blockquotes (untested)
+  - Ordered and Unordered Lists (untested)
+  - Code (untested)
+  - Horizontal Line (untested)
+  - Links (untested)
+  - Images (untested)
 - Extended Markdown Features
   - Tables
-  - Fenced Code Blocks (90%)
-  - Footnotes (50%)
+  - Fenced Code Blocks (untested)
+  - Footnotes (70%)
   - Heading IDs
   - Definition List
   - Task List
-  - Emoji (30%)
-  - Highlight (90%)
-  - Reference-Style Links (30%)
+  - Emoji (40%)
+  - Highlight (untested)
+  - Reference-Style Links (untested)
   - Syntax Highlighting
-  - Links to Headings (70%)
+  - Links to Headings (untested)
   - ~~HTML Tag Support~~
-  - Admonitions (50%)
+  - Admonitions (untested)
 - My Contribution
-  - Element Commands (30%)
-  - Better Table Formatting (40%)
+  - Element Commands (70%)
+  - Better Table Formatting (80%)
   - Collapsible Headings
-  - Replace Content (10%)
+  - Replace Content (80%)
 
 ### Headings
 
@@ -618,7 +618,7 @@ Imagine content that will be defined <span style="color:red">in the future</span
 [URL Links](google.com :"With optional Description")
 [Images]!(/img/cat.png :Cute)
 [optional text]^(id :"And description")
-[Headings]#(:"With description")
+[Headings]#{:"With description"}
 [Replace-Content]<%name>
 [Commands]{}
 

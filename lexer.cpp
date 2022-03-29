@@ -256,6 +256,31 @@ unique_ptr<InlineHandler> Parser::findNextInlineHandler(string name) {
 	return nullptr;
 }
 
+std::tuple<std::string, std::string, bool> Parser::parseLink(char delim) {
+	bool success, inQuote = false;
+	std::string keyword, command;
+
+	std::tie(keyword, success) = readUntil([delim](Parser * lex) {
+		return (lex->lastToken == tokSpace) || 
+			(lex->lastToken == tokSym && lex->lastString[0] == delim);
+	});
+	if (!success)
+		return std::make_tuple(keyword, "", false);
+	if (lastToken == tokSpace)
+		gettok(); // Consume Space
+	std::tie(command, success) = readUntil([&inQuote, delim](Parser * lex) {
+		if (lex->lastToken == tokSym && lex->lastString[0] == '"') {
+			inQuote = !inQuote;
+		}
+		return (!inQuote && lex->lastToken == tokSym && lex->lastString[0] == delim);
+	});
+	if (!success)
+		return std::make_tuple(keyword, command, false);
+	gettok(1);
+	// Valid
+	return std::make_tuple(keyword, command, true);
+}
+
 // void Parser::addSymbols(std::string str) {
 // 	for (auto e : str)
 // 		symbols.insert(e);

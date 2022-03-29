@@ -15,23 +15,27 @@ namespace Notedown {
 			if (97 <= e && e <= 122)
 				id += e;
 
-			// Numbers
-			if (48 <= e && e <= 57)
-				id += e;
+			if (!id.empty()) {
+				// Numbers
+				if (48 <= e && e <= 57)
+					id += e;
 
-			// Allowed for html compatibility
-			if (e == '_' || e == '-')
-				id += e;
+				// Allowed for html compatibility
+				if (e == '_' || e == '-')
+					id += e;
 
-			// Space convert
-			if (e == ' ')
-				id += '-';
+				// Space convert
+				if (e == ' ')
+					id += '-';
+			}
 		}
 		return id;
 	}
 
 	bool isId(std::string id) {
-		return id.find_first_not_of("abcdefghijklmnopqrstuvwxyz0123456789_-") == std::string::npos;
+		bool invalidChars = id.find_first_not_of("abcdefghijklmnopqrstuvwxyz0123456789_-") == std::string::npos,
+			startValid = islower(id[0]);
+		return startValid && !invalidChars;
 	}
 }
 
@@ -98,7 +102,6 @@ void NotedownCompiler::addFromFile(std::string filename, size_t order) {
 	mtx_documents.unlock();
 }
 
-
 void NotedownCompiler::addFile(std::initializer_list<std::string> filenames, bool multithread) {
 	std::vector<std::thread> threads;
 	size_t order = documents.size();
@@ -115,6 +118,25 @@ void NotedownCompiler::addFile(std::initializer_list<std::string> filenames, boo
 		th.join();
 }
 
+void NotedownCompiler::prepareAST() {
+	getIdDef();
+}
+
+void NotedownCompiler::getIdDef() {
+	for (auto & doc : documents) {
+		doc->registerNow();
+		for (auto & p : doc->iddef)
+			iddef[p.first] = p.second;
+	}
+}
+
+_ASTElement * NotedownCompiler::handleRequest(std::string request) {
+	auto it = iddef.find(request);
+	if (it == iddef.end())
+		return nullptr;
+	return it->second;
+}
+
 std::unique_ptr<ASTDocument> & NotedownCompiler::getDocument(size_t index) {
 	if (documents.size() <= index)
 		throw "Index out of range";
@@ -124,7 +146,7 @@ std::unique_ptr<ASTDocument> & NotedownCompiler::getDocument(size_t index) {
 std::stringbuf * NotedownCompiler::getRawHtml() {
 	std::ostream os(&buf);
 	for (auto & e : documents)
-		os << e->getHtml() << '\n';
+		os << e->getHtml(std::bind(&NotedownCompiler::handleRequest, this, std::placeholders::_1)) << '\n';
 	return &buf;
 }
 
@@ -132,6 +154,6 @@ std::stringbuf * NotedownCompiler::getRawHtml(size_t index) {
 	if (index >= documents.size())
 		throw "Index out of bounds";
 	std::ostream os(&buf);
-	os << documents[index]->getHtml();
+	os << documents[index]->getHtml(std::bind(&NotedownCompiler::handleRequest, this, std::placeholders::_1));
 	return &buf;
 }

@@ -30,6 +30,9 @@ protected:
 	std::unordered_map<std::string, size_t> inlineHandlerAlias;
 	std::vector<std::unique_ptr<InlineHandler>> inlineHandlerList;
 
+	std::unordered_map<std::string, _ASTElement *> iddef;
+	std::unordered_map<std::string, std::function<void(_ASTElement *, std::vector<std::string>)>> funcs;
+
 	std::unordered_set<int> symbols;
 
 	std::stringbuf buf;
@@ -37,6 +40,10 @@ protected:
 	void addSymbols(std::string str);
 
 	void addFromFile(std::string filename, size_t order);
+
+	void getIdDef();
+
+	_ASTElement * handleRequest(std::string request);
 
 public:
 	
@@ -114,6 +121,8 @@ public:
 	 * @param multithread Whether each file should be parsed with a separate thread (can speed up compilation)
 	 */
 	void addFile(std::initializer_list<std::string> filenames, bool multithread = true);
+
+	void prepareAST();
 
 	/*
 		Compiles all documents to html.

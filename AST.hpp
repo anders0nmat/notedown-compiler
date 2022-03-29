@@ -4,6 +4,10 @@
 #include <vector>
 #include <memory>
 #include <unordered_map>
+#include <functional>
+
+class _ASTElement;
+class ASTIdDefinition;
 
 /*
 	Class holding all kinds of commands
@@ -74,12 +78,14 @@ protected:
 
 public:
 
+	std::string refName;
 	std::string id;
 	std::string classes;
 	std::string title;
 	std::unordered_map<std::string, std::string> attributes;
 	std::string css;
 	std::vector<std::pair<std::string, std::vector<std::string>>> functions;
+	std::vector<std::string> refCommands;
 
 	std::unordered_map<std::string, std::string> flags;
 
@@ -142,8 +148,14 @@ public:
 					if (funcarg.second[0] == '"') {
 						funcarg.second = funcarg.second.substr(1, funcarg.second.length() - 2);
 					}
-					css.append(funcarg.first + ": " + funcarg.second + "; ");
+					css.append((css.empty() ? "" : " ") + funcarg.first + ": " + funcarg.second + ";");
 				}
+				continue;
+			}
+			if (e[0] == '%' && e.length() > 1) {
+				std::string ref = e.substr(1);
+				if (strisiden(ref))
+					refCommands.push_back(ref);
 				continue;
 			}
 		}
@@ -207,6 +219,8 @@ public:
 			functions.push_back(e);
 		for (auto & p : other.flags)
 			flags[p.first] = p.second;
+		for (auto & e : other.refCommands)
+			refCommands.push_back(e);
 	}
 
 	/*
@@ -223,22 +237,52 @@ public:
 			functions.push_back(e);
 		for (auto & p : other.flags)
 			flags[p.first] = p.second;
+		for (auto & e : other.refCommands)
+			refCommands.push_back(e);
 	}
 
-	virtual std::string constructHeader() {
-		std::string header;
-		if (id != "")
-			header += " id=\"" + id + "\"";
-		if (classes != "")
-			header += " class=\"" + classes + "\"";
-		if (title != "")
-			header += " title=\"" + title + "\"";
-		if (css != "")
-			header += " style=\"" + css + "\"";
-		for (auto & p : attributes)
-			header += " " + p.first + "=\"" + p.second + "\"";
-		return header;
+	/*
+		Same as merge but other has lower precedence
+	*/
+	virtual void integrate(ASTCommand && other) {
+		if (id.empty())
+			id = other.id;
+		classes += (classes.empty() ? "" : " ") + other.classes;
+		if (title.empty())
+			title = other.title;
+		for (auto & p : other.attributes)
+			attributes.insert(p);
+		css += (css.empty() ? "" : " ") + other.css;
+		for (auto & e : other.functions)
+			functions.push_back(e);
+		for (auto & p : other.flags)
+			flags.insert(p);
+		for (auto & e : other.refCommands)
+			refCommands.push_back(e);
 	}
+
+	/*
+		Same as merge but other has lower precedence
+	*/
+	virtual void integrate(ASTCommand & other) {
+		if (id.empty())
+			id = other.id;
+		classes += (classes.empty() ? "" : " ") + other.classes;
+		if (title.empty())
+			title = other.title;
+		for (auto & p : other.attributes)
+			attributes.insert(p);
+		css += (css.empty() ? "" : " ") + other.css;
+		for (auto & e : other.functions)
+			functions.push_back(e);
+		for (auto & p : other.flags)
+			flags.insert(p);
+		for (auto & e : other.refCommands)
+			refCommands.push_back(e);
+	}
+
+
+	virtual std::string constructHeader(std::function<_ASTElement*(std::string)> request);
 
 	void execute() {}
 };
@@ -258,11 +302,6 @@ public:
 class _ASTElement {
 protected:
 
-	ASTCommand commands;
-
-	std::unordered_map<std::string, std::string> attributes;
-
-
 	virtual std::string className() {return "_ASTElement";}
 
 	std::string cmdJson() {
@@ -271,6 +310,8 @@ protected:
 
 public:
 
+	ASTCommand commands;
+	std::unordered_map<std::string, std::string> attributes;
 	_ASTElement * parent = nullptr;
 
 	virtual _ASTElement * getDocument() {
@@ -280,6 +321,8 @@ public:
 	virtual _ASTElement * containingElement() {
 		return this;
 	}
+
+	virtual void registerNow() {}
 	
 	virtual ~_ASTElement() {}
 
@@ -306,7 +349,7 @@ public:
 		commands.execute();
 	}
 
-	virtual std::string getHtml() {
+	virtual std::string getHtml(std::function<_ASTElement*(std::string)> request) {
 		return "";
 	}
 };
@@ -318,11 +361,16 @@ template<class cl>
 class _ASTListElement : virtual public _ASTElement {
 protected:
 
-	std::vector<std::unique_ptr<cl>> elements;
-
 	std::string className() {return "_ASTListElement";}
 
 public:
+	std::vector<std::unique_ptr<cl>> elements;
+
+	void registerNow() override {
+		for (auto & e : elements)
+			e->registerNow();
+	}
+	
 
 	virtual void addElement(std::unique_ptr<cl> & element) {
 		if (element != nullptr) {
@@ -387,15 +435,21 @@ public:
 		return obj;
 	}
 
-	std::string getHtml() override {
+	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
 		std::string html;
 		for (auto & e : elements) {
-			html += e->getHtml() + "\n";
+			html += e->getHtml(request) + "\n";
 		}
 		return html;
 	}
 
 };
+
+
+/*
+	Base for all document-like elements, so multiline, multi-element structures
+*/
+typedef _ASTListElement<_ASTElement> _ASTBlockElement;
 
 
 // -------------------------------------- //
@@ -443,10 +497,10 @@ public:
 		return _ASTListElement<_ASTInlineElement>::toJson();
 	}
 
-	std::string getHtml() override {
+	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
 		std::string html;
 		for (auto & e : elements) {
-			html += e->getHtml();
+			html += e->getHtml(request);
 		}
 		return html;
 	}
@@ -486,7 +540,7 @@ public:
 		return obj;
 	}
 
-	std::string getHtml() override {
+	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
 		std::string cnt;
 		for (auto c : content) {
 			switch (c) {
@@ -520,7 +574,7 @@ public:
 
 	ASTLinebreak() {}
 
-	std::string getHtml() override {
+	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
 		return "<br>";
 	}
 };
@@ -565,7 +619,7 @@ public:
 		return obj;
 	}
 
-	std::string getHtml() override {
+	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
 		std::string tag;
 		switch (symbol) {
 			case '*': 
@@ -587,7 +641,7 @@ public:
 				tag = "code";
 				break;
 		}	
-		return "<" + tag + ">" + content->getHtml() + "</" + tag + ">";
+		return "<" + tag + ">" + content->getHtml(request) + "</" + tag + ">";
 	}
 
 };
@@ -617,7 +671,7 @@ public:
 		return obj;
 	}
 
-	std::string getHtml() override {
+	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
 		return ":EMOJI " + shortcode + ":";
 	}
 };
@@ -698,15 +752,7 @@ public:
 		return obj;
 	}
 
-	std::string getHtml() override {
-		std::string html = "<a";
-		commands.attributes["href"] = url;
-		html += commands.constructHeader();
-		html += ">";
-		html += content->getHtml();
-		html += "</a>";
-		return html;
-	}
+	std::string getHtml(std::function<_ASTElement*(std::string)> request) override;
 };
 
 /*
@@ -740,14 +786,7 @@ public:
 		return obj;
 	}
 
-	std::string getHtml() override {
-		std::string html = "<img";
-		commands.attributes["src"] = url;
-		commands.attributes["alt"] = content->literalText();
-		html += commands.constructHeader();
-		html += ">";
-		return html;
-	}
+	std::string getHtml(std::function<_ASTElement*(std::string)> request) override;
 };
 
 /*
@@ -781,16 +820,7 @@ public:
 		return obj;
 	}
 
-	std::string getHtml() override {
-		std::string html = "<a";
-		commands.attributes["href"] = "#" + id;
-		commands.addClass("footnote");
-		html += commands.constructHeader();
-		html += ">";
-		html += content->getHtml();
-		html += "</a>";
-		return html;
-	}
+	std::string getHtml(std::function<_ASTElement*(std::string)> request) override;
 };
 
 /*
@@ -824,13 +854,15 @@ public:
 		return obj;
 	}
 
-	std::string getHtml() override {
+	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
 		std::string html = "<a";
 		commands.attributes["href"] = "#" + id;
 		commands.addClass("h-link");
-		html += commands.constructHeader();
+		if (request("#" + id) == nullptr)
+			commands.addClass("missing");
+		html += commands.constructHeader(request);
 		html += ">";
-		html += content->getHtml();
+		html += content->getHtml(request);
 		html += "</a>";
 		return html;
 	}
@@ -866,6 +898,25 @@ public:
 		obj += "}";
 		return obj;
 	}
+
+	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
+		_ASTBlockElement * replContent = dynamic_cast<_ASTBlockElement *>(request("<" + id));
+
+		std::string html = "<div";
+		if (replContent == nullptr)
+			commands.addClass("missing");
+		html += commands.constructHeader(request);
+		html += ">";
+
+		if (replContent == nullptr)
+			html += content->getHtml(request);
+		else {
+			for (auto & e : replContent->elements)
+				html += e->getHtml(request) + "\n";
+		}
+		html += "</div>";
+		return html;
+	}
 };
 
 
@@ -874,10 +925,25 @@ public:
 // -------------------------------------- //
 
 
+class ASTDocument;
+
 /*
-	Base for all document-like elements, so multiline, multi-element structures
+	Holds all elements of a file
 */
-typedef _ASTListElement<_ASTElement> _ASTBlockElement;
+class ASTDocument : public _ASTBlockElement {
+protected:
+
+	std::string className() {return "ASTDocument";}
+
+public:
+
+	std::unordered_map<std::string, ASTIdDefinition *> iddef;
+
+	_ASTElement * getDocument() override {
+		return this;
+	}
+
+};
 
 /*
 	Holds definitions for ids
@@ -885,17 +951,30 @@ typedef _ASTListElement<_ASTElement> _ASTBlockElement;
 class ASTIdDefinition : public _ASTBlockElement {
 protected:
 
-	std::string id;
-	char type;
 
 	std::string className() {return "ASTIdDefinition";}
 
 public:
+	std::string id;
+	std::string url;
+	char type;
 
-	ASTIdDefinition(std::string id, char type) : id(id), type(type) {}
+	ASTIdDefinition(std::string id, std::string url, char type) : id(id), url(url), type(type) {}
+
+	void registerNow() {
+		ASTDocument * doc = dynamic_cast<ASTDocument *>(getDocument());
+		if (doc == nullptr)
+			return;
+		std::string _id(1, type);
+		_id += id;
+		doc->iddef[_id] = this;
+		if (type == '{')
+			commands.refName = id;
+	}
 
 	std::string toJson() override {
 		std::string obj = "{\"class\": \"" + className() + "\",";
+		obj += "\"url\": \"" + url + "\",";
 		obj += "\"id\": \"" + id + "\",";
 		obj += "\"type\": \"" + std::to_string(type) + "\",";
 		obj += "\"elements\": [";
@@ -914,23 +993,11 @@ public:
 		return obj;
 	}
 
-};
-
-/*
-	Holds all elements of a file
-*/
-class ASTDocument : public _ASTBlockElement {
-protected:
-
-	std::string className() {return "ASTDocument";}
-
-public:
-
-	_ASTElement * getDocument() override {
-		return this;
+	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
+		return "";
 	}
-
 };
+
 
 /*
 	Represents Headings
@@ -963,11 +1030,11 @@ public:
 		return obj;
 	}
 
-	std::string getHtml() override {
+	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
 		std::string html = "<h" + std::to_string(level);
-		html += commands.constructHeader();
+		html += commands.constructHeader(request);
 		html += ">";
-		html += content->getHtml();
+		html += content->getHtml(request);
 		html += "</h" + std::to_string(level) + ">";
 		return html;
 	}
@@ -985,7 +1052,7 @@ protected:
 public:
 
 
-	std::string getHtml() override {
+	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
 		return "<hr>";
 	}
 };
@@ -999,11 +1066,11 @@ protected:
 	std::string className() {return "ASTParagraph";}
 
 public:
-	std::string getHtml() override {
+	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
 		std::string html = "<p";
-		html += commands.constructHeader();
+		html += commands.constructHeader(request);
 		html += ">\n";
-		html += _ASTBlockElement::getHtml();
+		html += _ASTBlockElement::getHtml(request);
 		html += "</p>";
 		return html;
 	}
@@ -1044,13 +1111,13 @@ public:
 		return obj;
 	}
 
-	std::string getHtml() override {
+	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
 		std::string html = "<blockquote";
 		if (centered)
 			commands.addClass("center");
-		html += commands.constructHeader();
+		html += commands.constructHeader(request);
 		html += ">\n";
-		html += _ASTBlockElement::getHtml();
+		html += _ASTBlockElement::getHtml(request);
 		html += "</blockquote>";
 		return html;
 	}
@@ -1088,11 +1155,11 @@ public:
 		return obj;
 	}
 
-	std::string getHtml() override {
+	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
 		std::string html = "<li";
-		html += commands.constructHeader();
+		html += commands.constructHeader(request);
 		html += ">";
-		html += _ASTBlockElement::getHtml();
+		html += _ASTBlockElement::getHtml(request);
 		html += "</li>";
 		return html;
 	}
@@ -1107,11 +1174,11 @@ protected:
 	std::string className() {return "ASTUnorderedList";}
 
 public:
-	std::string getHtml() override {
+	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
 		std::string html = "<ul";
-		html += commands.constructHeader();
+		html += commands.constructHeader(request);
 		html += ">\n";
-		html += _ASTListElement<ASTListElement>::getHtml();
+		html += _ASTListElement<ASTListElement>::getHtml(request);
 		html += "</ul>";
 		return html;
 	}
@@ -1127,11 +1194,11 @@ protected:
 
 public:
 
-	std::string getHtml() override {
+	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
 		std::string html = "<ol";
-		html += commands.constructHeader();
+		html += commands.constructHeader(request);
 		html += ">\n";
-		html += _ASTListElement<ASTListElement>::getHtml();
+		html += _ASTListElement<ASTListElement>::getHtml(request);
 		html += "</ol>";
 		return html;
 	}
@@ -1177,11 +1244,11 @@ public:
 		return obj;
 	}
 
-	std::string getHtml() override {
+	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
 		std::string html = "<pre><code";
-		html += commands.constructHeader();
+		html += commands.constructHeader(request);
 		html += ">\n";
-		html += _ASTBlockElement::getHtml();
+		html += _ASTBlockElement::getHtml(request);
 		html += "</code></pre>";
 		return html;
 	}
@@ -1224,14 +1291,14 @@ public:
 		return obj;
 	}
 
-	std::string getHtml() override {
+	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
 		std::string html = "<blockquote";
 		commands.addClass(type);
 		if (sym)
 			commands.addClass("sym");
-		html += commands.constructHeader();
+		html += commands.constructHeader(request);
 		html += ">\n";
-		html += _ASTBlockElement::getHtml();
+		html += _ASTBlockElement::getHtml(request);
 		html += "</blockquote>";
 		return html;
 	}

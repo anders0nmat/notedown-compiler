@@ -1,5 +1,6 @@
-#include "inline_handler.hpp"
-#include "parser_handler.hpp"
+// #include "inline_handler.hpp"
+// #include "parser_handler.hpp"
+#include "handlers.hpp"
 #include "notedown-templates.hpp"
 
 // void Parser::addDefaultHandlers() {
@@ -14,6 +15,7 @@ void NotedownCompiler::addDefaultHandlers() {
 	addHandler<BlockquoteHandler>("H_blockquote");
 	addHandler<HLineHandler>("H_hline");
 	addHandler<CodeHandler>("H_code");
+	addHandler<IdDefinitionHandler>("H_iddef");
 
 	addInlineHandler<InlineTemplateHandler<'*'>>("I_bold");
 	addInlineHandler<InlineTemplateHandler<'/'>>("I_italic");
@@ -549,7 +551,134 @@ std::unique_ptr<_ASTElement> InfoBlockHandler::finish(Parser * lex) {
 	return std::move(content);
 }
 
+// ----- IdDefinitionHandler ----- //
 
+std::unique_ptr<ParserHandler> IdDefinitionHandler::createNew() {
+	return std::make_unique<IdDefinitionHandler>();
+}
+
+char IdDefinitionHandler::invType() {
+	switch (type) {
+		case '(': return ')';
+		case '{': return '}';
+		case '<': return '>';
+		default: return '\0';
+	}
+}
+
+std::string IdDefinitionHandler::triggerChars() {
+	return "%(){}<>:";
+}
+
+bool IdDefinitionHandler::canHandle(Parser * lex) {
+	if (content != nullptr && type == '<')
+		return canHandleBlock(lex);
+	
+	return (lex->lastToken == tokSym) &&
+		(lex->lastString[0] == '%') &&
+		(lex->lastInt == 1) &&
+		(lex->peektok() == tokSym) &&
+		(
+			(lex->currchar() == '(') ||
+			(lex->currchar() == '{') ||
+			(lex->currchar() == '<')
+		);
+}
+
+std::tuple<std::unique_ptr<_ASTElement>, bool> IdDefinitionHandler::handle(Parser * lex) {
+	if (content == nullptr) {
+		lex->gettok(); // Consume %
+		type = lex->lastString[0];
+		lex->gettok(); // Consume opening bracket
+		std::string id;
+		bool success;
+		char _type = invType();
+		std::tie(id, success) = lex->readUntil([_type](Parser * lex) {
+			return (lex->lastToken == tokSym) &&
+				(lex->lastString[0] == _type) &&
+				(lex->lastInt == 1) &&
+				(lex->peektok() == tokSym) &&
+				(lex->currchar() == ':');
+		});
+
+		if (!success) {
+			std::unique_ptr<ASTInlineText> t = std::make_unique<ASTInlineText>();
+			t->addElement(std::make_unique<ASTPlainText>("%" + std::string(1, type)));
+			t->addElement(std::make_unique<ASTPlainText>(id));
+			return std::make_tuple(std::move(t), true);
+		}
+
+		lex->gettok(); // Consume closing Bracket
+		if (lex->lastInt != 1 || lex->peektok() != tokSpace) {
+			// More than one : or no space following
+			std::unique_ptr<ASTInlineText> t = std::make_unique<ASTInlineText>();
+			t->addElement(std::make_unique<ASTPlainText>("%" + std::string(1, type)));
+			t->addElement(std::make_unique<ASTPlainText>(id));
+			t->addElement(std::make_unique<ASTPlainText>(invType()));
+			std::unique_ptr<ASTParagraph> p = std::make_unique<ASTParagraph>();
+			p->addElement(std::move(t));
+			p->addElement(std::get<0>(lex->parseText()));
+			lex->gettok(); // Consume newline
+			return std::make_tuple(std::move(p), true);
+		}
+
+		lex->gettok(); // Consume :
+		lex->gettok(); // Consume Spaces
+
+		std::string url;
+		std::string command;
+		std::unique_ptr<_ASTElement> e;
+		std::unique_ptr<ASTInlineText> t;
+		std::unique_ptr<ASTParagraph> p;
+		bool inQuote;
+
+		switch (type) {
+			case '(':
+				// <Url or Id> <Commands>
+				std::tie(url, command, success) = lex->parseLink('\0');
+				content = std::make_unique<ASTIdDefinition>(id, url, type);
+				content->addCommand(ASTCommand(command));
+				return std::make_tuple(std::move(content), true);
+			case '{':
+				// <Commands>
+				std::tie(command, success) = lex->readUntil([&inQuote](Parser * lex) {
+					return false;
+				});
+				content = std::make_unique<ASTIdDefinition>(id, "", type);
+				content->addCommand(ASTCommand(command));
+				return std::make_tuple(std::move(content), true);
+			case '<':
+				// <Replace Content>
+				content = std::make_unique<ASTIdDefinition>(id, "", type);
+				bool redo;
+				do {
+					std::tie(e, redo) = lex->parseLine(handler);
+					content->addElement(e);
+				} while (redo);
+				break;
+			default:
+				std::unique_ptr<ASTInlineText> t = std::make_unique<ASTInlineText>();
+				t->addElement(std::make_unique<ASTPlainText>("%" + std::string(1, type)));
+				t->addElement(std::make_unique<ASTPlainText>(id));
+				t->addElement(std::make_unique<ASTPlainText>(invType()));
+				std::unique_ptr<ASTParagraph> p = std::make_unique<ASTParagraph>();
+				p->addElement(std::move(t));
+				p->addElement(std::get<0>(lex->parseText()));
+				lex->gettok(); // Consume newline
+				return std::make_tuple(std::move(p), true);
+		}
+		return std::make_tuple(nullptr, false);
+	}
+	
+	handleBlock(lex);
+
+	return std::make_tuple(nullptr, false);
+}
+
+std::unique_ptr<_ASTElement> IdDefinitionHandler::finish(Parser * lex) {
+	finishBlock(lex);
+	return std::move(content);
+}
 
 
 // ------------------------------------- //
@@ -599,29 +728,29 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineCodeHandler::handle(P
 
 // ----- InlineModifierHandler ----- //
 
-std::tuple<std::string, std::string, bool> InlineModifierHandler::parseLink(Parser * lex, char delim) {
-	bool success, inQuote = false;
-	std::string keyword, command;
-	std::tie(keyword, success) = lex->readUntil([delim](Parser * lex) {
-		return (lex->lastToken == tokSpace) || 
-			(lex->lastToken == tokSym && lex->lastString[0] == delim);
-	});
-	if (!success)
-		return std::make_tuple(keyword, "", false);
-	if (lex->lastToken == tokSpace)
-		lex->gettok(); // Consume Space
-	std::tie(command, success) = lex->readUntil([&inQuote, delim](Parser * lex) {
-		if (lex->lastToken == tokSym && lex->lastString[0] == '"') {
-			inQuote = !inQuote;
-		}
-		return (!inQuote && lex->lastToken == tokSym && lex->lastString[0] == delim);
-	});
-	if (!success)
-		return std::make_tuple(keyword, command, false);
-	lex->gettok(1);
-	// Valid
-	return std::make_tuple(keyword, command, true);
-}
+// std::tuple<std::string, std::string, bool> InlineModifierHandler::parseLink(Parser * lex, char delim) {
+// 	bool success, inQuote = false;
+// 	std::string keyword, command;
+// 	std::tie(keyword, success) = lex->readUntil([delim](Parser * lex) {
+// 		return (lex->lastToken == tokSpace) || 
+// 			(lex->lastToken == tokSym && lex->lastString[0] == delim);
+// 	});
+// 	if (!success)
+// 		return std::make_tuple(keyword, "", false);
+// 	if (lex->lastToken == tokSpace)
+// 		lex->gettok(); // Consume Space
+// 	std::tie(command, success) = lex->readUntil([&inQuote, delim](Parser * lex) {
+// 		if (lex->lastToken == tokSym && lex->lastString[0] == '"') {
+// 			inQuote = !inQuote;
+// 		}
+// 		return (!inQuote && lex->lastToken == tokSym && lex->lastString[0] == delim);
+// 	});
+// 	if (!success)
+// 		return std::make_tuple(keyword, command, false);
+// 	lex->gettok(1);
+// 	// Valid
+// 	return std::make_tuple(keyword, command, true);
+// }
 
 std::unique_ptr<InlineHandler> InlineModifierHandler::createNew() {
 	return std::make_unique<InlineModifierHandler>();
@@ -671,7 +800,7 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineModifierHandler::hand
 	switch (lex->lastString[0]) {
 		case '(':
 			lex->gettok(); // Consume (
-			std::tie(keyword, command, success) = parseLink(lex, ')');
+			std::tie(keyword, command, success) = lex->parseLink(')');
 			if (!success) {
 				content->prependElement(std::make_unique<ASTPlainText>('['));
 
@@ -692,7 +821,7 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineModifierHandler::hand
 				return std::make_tuple(std::move(content), true);
 			}
 			lex->gettok(); // Consume (
-			std::tie(keyword, command, success) = parseLink(lex, ')');
+			std::tie(keyword, command, success) = lex->parseLink(')');
 			if (!success) {
 				content->prependElement(std::make_unique<ASTPlainText>('['));
 
@@ -713,7 +842,7 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineModifierHandler::hand
 				return std::make_tuple(std::move(content), true);
 			}
 			lex->gettok(); // Consume (
-			std::tie(keyword, command, success) = parseLink(lex, ')');
+			std::tie(keyword, command, success) = lex->parseLink(')');
 			if (!success) {
 				content->prependElement(std::make_unique<ASTPlainText>('['));
 
@@ -728,7 +857,7 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineModifierHandler::hand
 		case '#':
 			keyword = Notedown::makeId(content->literalText());
 			lex->gettok(); // Consume #
-			if (lex->lastToken != tokSym || lex->lastString[0] != '(' || lex->lastInt != 1) {
+			if (lex->lastToken != tokSym || lex->lastString[0] != '{' || lex->lastInt != 1) {
 				// Valid but no other specification
 				result = std::make_unique<ASTModifierHeadingLink>(keyword, content);
 				return std::make_tuple(std::move(result), true);
@@ -738,12 +867,12 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineModifierHandler::hand
 				if (lex->lastToken == tokSym && lex->lastString[0] == '"') {
 					inQuote = !inQuote;
 				}
-				return (!inQuote && lex->lastToken == tokSym && lex->lastString[0] == ')');
+				return (!inQuote && lex->lastToken == tokSym && lex->lastString[0] == '}');
 			});
 			if (!success) {
 				content->prependElement(std::make_unique<ASTPlainText>('['));
 
-				content->addElement(std::make_unique<ASTPlainText>("]#("));
+				content->addElement(std::make_unique<ASTPlainText>("]#{"));
 				content->addElement(std::make_unique<ASTPlainText>(command));
 				return std::make_tuple(std::move(content), true);
 			}
@@ -761,7 +890,7 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineModifierHandler::hand
 				return std::make_tuple(std::move(content), true);
 			}
 			lex->gettok(); // Consume %
-			std::tie(keyword, command, success) = parseLink(lex, '>');
+			std::tie(keyword, command, success) = lex->parseLink('>');
 			if (!success) {
 				content->prependElement(std::make_unique<ASTPlainText>('['));
 

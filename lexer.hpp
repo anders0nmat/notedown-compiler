@@ -82,6 +82,8 @@ public:
 	*/
 	std::tuple<std::string, bool> extractText(bool allowRange, std::string delimiter);
 
+	std::tuple<std::string, std::string, bool> parseLink(char delim);
+
 	/*
 		Reads Text literally (no Sym or Space collapsing) until condition is met or EOF/EOL occured
 		Doesnt consume ending token if condition caused end, does consume newline
