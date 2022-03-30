@@ -75,10 +75,9 @@
 */
 
 int main(int argc, char *argv[]) {
-
 	NotedownCompiler compiler;
 	compiler.addDefaultHandlers();
-	compiler.addFile("example.nd");
+	compiler.addFile({ "example.nd", "example2.nd" });
 	compiler.prepareAST();
 
 	// std::ofstream json("AST.json");

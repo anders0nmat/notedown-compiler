@@ -41,7 +41,7 @@ Notedown is a Quick-HTML-Language heavily inspired by Markdown. It extends on th
 ## Roadmap
 
 - [x] Enable multithreading
-- [ ] Allow for multiple files to be combined into one
+- [x] Allow for multiple files to be combined into one
 - [x] Add HTML Parsing for AST
 - [ ] Add Command Function Registering and Handling
 - [ ] Add html featureset e.g. template files, adding file includes (for css and javascript)
@@ -482,7 +482,7 @@ Available commands are:
 - `.<class>` : Adds the html attribute 'class' and sets it to the value(s) of `<class>`. Multiple classes can be assigned by multiple dots: `.red.center`. Can **not** appear more than once.
 - `:"<title>"` : Adds `<title>` as hover text to the element. Can **not** appear more than once.
 - `+<name>="<value>"` : Adds `<name>` as attribute to the element and sets it to `<value>`. *Can* appear more than once but `<name>` must be different.
-- `$<function>:[<args>,]` : Calls the predefined `<function>` to further process this Command, see [Available command functions](#available-command-functions). . Can **not** appear more than once.
+- `$<function>:[<args>,]` : Calls the predefined `<function>` to further process this Command, see [Available command functions](#available-command-functions). Can **not** appear more than once.
 - `><name>:<value>` : Sets the element style attribute `<name>` to `<value>`. *Can* appear more than once. 
 
 Any of these can be chained together separated by spaces:

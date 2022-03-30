@@ -809,7 +809,7 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineModifierHandler::hand
 				content->addElement(std::make_unique<ASTPlainText>(command));
 				return std::make_tuple(std::move(content), true);
 			}
-			result = std::make_unique<ASTModifierLink>(keyword, content);
+			result = std::make_unique<ASTLink>(keyword, content);
 			result->addCommand(ASTCommand(command));
 			return std::make_tuple(std::move(result), true);
 		case '!':
@@ -830,7 +830,7 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineModifierHandler::hand
 				content->addElement(std::make_unique<ASTPlainText>(command));
 				return std::make_tuple(std::move(content), true);
 			}
-			result = std::make_unique<ASTModifierImage>(keyword, content);
+			result = std::make_unique<ASTImage>(keyword, content);
 			result->addCommand(ASTCommand(command));
 			return std::make_tuple(std::move(result), true);
 		case '^':
@@ -851,7 +851,7 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineModifierHandler::hand
 				content->addElement(std::make_unique<ASTPlainText>(command));
 				return std::make_tuple(std::move(content), true);
 			}
-			result = std::make_unique<ASTModifierFootnote>(keyword, content);
+			result = std::make_unique<ASTFootnote>(keyword, content);
 			result->addCommand(ASTCommand(command));
 			return std::make_tuple(std::move(result), true);
 		case '#':
@@ -859,7 +859,7 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineModifierHandler::hand
 			lex->gettok(); // Consume #
 			if (lex->lastToken != tokSym || lex->lastString[0] != '{' || lex->lastInt != 1) {
 				// Valid but no other specification
-				result = std::make_unique<ASTModifierHeadingLink>(keyword, content);
+				result = std::make_unique<ASTHeadingLink>(keyword, content);
 				return std::make_tuple(std::move(result), true);
 			}
 			lex->gettok(); // Consume (
@@ -878,7 +878,7 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineModifierHandler::hand
 			}
 			lex->gettok(1);
 			// Valid, URL, Command and Type populated
-			result = std::make_unique<ASTModifierHeadingLink>(keyword, content);
+			result = std::make_unique<ASTHeadingLink>(keyword, content);
 			result->addCommand(ASTCommand(command));
 			return std::make_tuple(std::move(result), true);
 		case '<':
@@ -899,7 +899,7 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineModifierHandler::hand
 				content->addElement(std::make_unique<ASTPlainText>(command));
 				return std::make_tuple(std::move(content), true);
 			}
-			result = std::make_unique<ASTModifierReplace>(keyword, content);
+			result = std::make_unique<ASTReplace>(keyword, content);
 			result->addCommand(ASTCommand(command));
 			return std::make_tuple(std::move(result), true);
 		case '{':

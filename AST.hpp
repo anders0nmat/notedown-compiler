@@ -9,75 +9,31 @@
 class _ASTElement;
 class ASTIdDefinition;
 
+typedef std::function<_ASTElement*(std::string)> ASTRequestFunc;
+
 /*
-	Class holding all kinds of commands
+	Holding information of HTML attributes:
+	- Id
+	- Class
+	- Title
+	- Style
+	- Other Attributes
+	Additionally, it holds references to other Commands which are included
+	at translation time.
+	It also manages functions to execute before translation
+	and flags for operation of these function
 */
 class ASTCommand {
 protected:
-
-	std::vector<std::string> splitSnippets(std::string str, char c) {
-		std::vector<std::string> result;
-		std::string s;
-		bool block = false;
-		for (auto e : str) {
-			if (!block && e == c) {
-				if (!s.empty())
-					result.push_back(s);
-				s = "";
-			}
-			else if (e == '"') {
-				block = !block;
-			}
-			else
-				s += e;
-		}
-		if (!s.empty())
-			result.push_back(s);
-		return result;
-	}
-
-	std::vector<std::string> splitAt(std::string str, char c) {
-		std::vector<std::string> result;
-		std::string s;
-		for (auto e : str) {
-			if (e == c) {
-				if (!s.empty())
-					result.push_back(s);
-				s = "";
-			}
-			else
-				s += e;
-		}
-		if (!s.empty())
-			result.push_back(s);
-		return result;
-	}
-
-	std::pair<std::string, std::string> apartAt(std::string str, char c) {
-		size_t pos = str.find_first_of(c);
-		if (pos == std::string::npos)
-			return std::make_pair(str, "");
-		return std::make_pair(str.substr(0, pos), str.substr(pos + 1));
-	}
-
-	bool strisalnum(std::string str) {
-		for (auto e : str)
-			if (!isalnum(e))
-				return false;
-		return true;
-	}
-
-	bool strisiden(std::string str) {
-		for (auto e : str)
-			if (!isalnum(e) && e != '-' && e != '_')
-				return false;
-		return true;
-	}
-
 	virtual std::string className() {return "ASTCommand";}
 
-public:
+	std::vector<std::string> splitSnippets(std::string str, char c);
+	std::vector<std::string> splitAt(std::string str, char c);
+	std::pair<std::string, std::string> apartAt(std::string str, char c);
 
+	bool strisalnum(std::string str);
+	bool strisiden(std::string str);
+public:
 	std::string refName;
 	std::string id;
 	std::string classes;
@@ -90,206 +46,35 @@ public:
 	std::unordered_map<std::string, std::string> flags;
 
 	ASTCommand() {}
+	ASTCommand(std::string command);
 
-	ASTCommand(std::string command) {
-		std::vector<std::string> snippets(splitSnippets(command, ' '));
-		for (auto & e : snippets) {
-			if (e[0] == '#' && e.length() > 1) {
-				// ID Setter
-				std::string newId = e.substr(1);
-				if (strisiden(newId))
-					id = newId;
-				continue;
-			}
-			if (e[0] == '.' && e.length() > 1) {
-				std::vector cls(splitAt(e, '.'));
-				for (auto & c : cls) {
-					if (strisiden(c))
-						classes += (classes.empty() ? "" : " ") + c;
-				}
-				continue;
-			}
-			if (e[0] == ':' && e.length() > 1) {
-				std::string desc = e.substr(1);
-				if (desc[0] == '"')
-					title = desc.substr(1, desc.length() - 2);
-				else
-					title = desc;
-				continue;
-			}
-			if (e[0] == '+' && e.length() > 1) {
-				auto fields = apartAt(e.substr(1), '=');
-				if (strisiden(fields.first))
-					attributes.insert(fields);
-				continue;
-			}
-			if (e[0] == '$' && e.length() > 1) {
-				auto funcarg = apartAt(e.substr(1), ':');
-				if (strisiden(funcarg.first)) {
-					std::pair<std::string, std::vector<std::string>> f;
-					f.first = funcarg.first;
-					if (!funcarg.second.empty()) {
-						auto args = splitSnippets(funcarg.second, ',');
-						for (auto & arg : args) {
-							if (arg[0] == '"')
-								f.second.push_back(arg.substr(1, arg.length() - 2));
-							else
-								f.second.push_back(arg);
-						}
-						functions.push_back(f);
-					}
-				}
-				
-				continue;
-			}
-			if (e[0] == '>' && e.length() > 4) {
-				auto funcarg = apartAt(e.substr(1), ':');
-				if (!funcarg.second.empty() && strisiden(funcarg.first)) {
-					if (funcarg.second[0] == '"') {
-						funcarg.second = funcarg.second.substr(1, funcarg.second.length() - 2);
-					}
-					css.append((css.empty() ? "" : " ") + funcarg.first + ": " + funcarg.second + ";");
-				}
-				continue;
-			}
-			if (e[0] == '%' && e.length() > 1) {
-				std::string ref = e.substr(1);
-				if (strisiden(ref))
-					refCommands.push_back(ref);
-				continue;
-			}
-		}
-	}
+	void addClass(std::string className);
 
-	void addClass(std::string className) {
-		classes += (classes.empty() ? "" : " ") + className;
-	}
-
-	virtual std::string toJson() {
-		std::string obj = "{\"class\": \"" + className() + "\",";
-		obj += "\"id\": \"" + id + "\",";
-		obj += "\"classes\": \"" + classes + "\",";
-		obj += "\"title\": \"" + title + "\",";
-		obj += "\"css\": \"" + css + "\",";
-
-		obj += "\"attributes\": {";
-
-		for (auto & e : attributes) {
-			obj += "\"" + e.first + "\": \"" + e.second + "\",";
-		}		
-		
-		if (attributes.size() != 0)
-			obj.erase(std::prev(obj.end()));
-
-		obj += "},";
-
-		obj += "\"functions\": {";
-
-		for (auto & e : functions) {
-			obj += "\"" + e.first + "\": [";
-			for (auto arg : e.second) {
-				obj += "\"" + arg + "\",";
-			}
-			if (e.second.size() != 0)
-				obj.erase(std::prev(obj.end()));
-			obj += "],";
-		}		
-		
-		if (attributes.size() != 0)
-			obj.erase(std::prev(obj.end()));
-
-		obj += "}";
-		
-		
-		obj += "}";
-		return obj;
-	}
+	virtual std::string toJson();
 
 	/*
 		Merges other into this element without consuming it
 	*/
-	virtual void merge(ASTCommand & other) {
-		id = other.id;
-		classes += (classes.empty() ? "" : " ") + other.classes;
-		title = other.title;
-		for (auto & p : other.attributes)
-			attributes[p.first] = p.second;
-		css += (css.empty() ? "" : " ") + other.css;
-		for (auto & e : other.functions)
-			functions.push_back(e);
-		for (auto & p : other.flags)
-			flags[p.first] = p.second;
-		for (auto & e : other.refCommands)
-			refCommands.push_back(e);
-	}
-
-	/*
-		Merges other into this element without consuming it
-	*/
-	virtual void merge(ASTCommand && other) {
-		id = other.id;
-		classes += (classes.empty() ? "" : " ") + other.classes;
-		title = other.title;
-		for (auto & p : other.attributes)
-			attributes[p.first] = p.second;
-		css += (css.empty() ? "" : " ") + other.css;
-		for (auto & e : other.functions)
-			functions.push_back(e);
-		for (auto & p : other.flags)
-			flags[p.first] = p.second;
-		for (auto & e : other.refCommands)
-			refCommands.push_back(e);
-	}
+	virtual void merge(ASTCommand & other);
+	virtual void merge(ASTCommand && other);
 
 	/*
 		Same as merge but other has lower precedence
 	*/
-	virtual void integrate(ASTCommand && other) {
-		if (id.empty())
-			id = other.id;
-		classes += (classes.empty() ? "" : " ") + other.classes;
-		if (title.empty())
-			title = other.title;
-		for (auto & p : other.attributes)
-			attributes.insert(p);
-		css += (css.empty() ? "" : " ") + other.css;
-		for (auto & e : other.functions)
-			functions.push_back(e);
-		for (auto & p : other.flags)
-			flags.insert(p);
-		for (auto & e : other.refCommands)
-			refCommands.push_back(e);
-	}
+	virtual void integrate(ASTCommand && other);
+	virtual void integrate(ASTCommand & other);
 
-	/*
-		Same as merge but other has lower precedence
-	*/
-	virtual void integrate(ASTCommand & other) {
-		if (id.empty())
-			id = other.id;
-		classes += (classes.empty() ? "" : " ") + other.classes;
-		if (title.empty())
-			title = other.title;
-		for (auto & p : other.attributes)
-			attributes.insert(p);
-		css += (css.empty() ? "" : " ") + other.css;
-		for (auto & e : other.functions)
-			functions.push_back(e);
-		for (auto & p : other.flags)
-			flags.insert(p);
-		for (auto & e : other.refCommands)
-			refCommands.push_back(e);
-	}
-
-
-	virtual std::string constructHeader(std::function<_ASTElement*(std::string)> request);
+	virtual void resolve(ASTRequestFunc request);
+	virtual std::string constructHeader(ASTRequestFunc request);
 
 	void execute() {}
 };
 
+
 // -------------------------------------- //
 // ------------- TEMPLATES -------------- //
 // -------------------------------------- //
+
 
 /*
 	Base Class for entire AST.
@@ -301,57 +86,30 @@ public:
 */
 class _ASTElement {
 protected:
-
 	virtual std::string className() {return "_ASTElement";}
 
-	std::string cmdJson() {
-		return "\"command\": " + commands.toJson();
-	}
-
+	std::string cmdJson();
 public:
-
 	ASTCommand commands;
 	std::unordered_map<std::string, std::string> attributes;
 	_ASTElement * parent = nullptr;
 
-	virtual _ASTElement * getDocument() {
-		return parent;
-	}
-
-	virtual _ASTElement * containingElement() {
-		return this;
-	}
-
+	virtual _ASTElement * getDocument();
+	virtual _ASTElement * containingElement();
 	virtual void registerNow() {}
 	
 	virtual ~_ASTElement() {}
 
-	virtual std::string toJson() {
-		std::string obj = "{\"class\": \"" + className() + "\",";
-		obj += cmdJson();
-		obj += "}";
-		return obj;
-	}
+	virtual std::string toJson();
 
-	virtual bool isEmpty() {
-		return true;
-	}
+	virtual bool isEmpty();
 
-	virtual void addCommand(ASTCommand && command) {
-		commands.merge(command);
-	}
+	virtual void addCommand(ASTCommand && command);
+	virtual void addCommand(ASTCommand & command);
 
-	virtual void addCommand(ASTCommand & command) {
-		commands.merge(command);
-	}
+	virtual void executeCommands();
 
-	virtual void executeCommands() {
-		commands.execute();
-	}
-
-	virtual std::string getHtml(std::function<_ASTElement*(std::string)> request) {
-		return "";
-	}
+	virtual std::string getHtml(ASTRequestFunc request);
 };
 
 /*
@@ -360,7 +118,6 @@ public:
 template<class cl>
 class _ASTListElement : virtual public _ASTElement {
 protected:
-
 	std::string className() {return "_ASTListElement";}
 
 public:
@@ -371,18 +128,10 @@ public:
 			e->registerNow();
 	}
 	
-
 	virtual void addElement(std::unique_ptr<cl> & element) {
 		if (element != nullptr) {
 			element->parent = this;
 			elements.push_back(std::move(element));
-		}
-	}
-
-	virtual void prependElement(std::unique_ptr<cl> & element) {
-		if (element != nullptr) {
-			element->parent = this;
-			elements.insert(elements.begin(), std::move(element));
 		}
 	}
 
@@ -396,6 +145,13 @@ public:
 	virtual void addElements(std::vector<std::unique_ptr<cl>> && elements) {
 		for (auto & e : elements)
 			addElement(e);
+	}
+
+	virtual void prependElement(std::unique_ptr<cl> & element) {
+		if (element != nullptr) {
+			element->parent = this;
+			elements.insert(elements.begin(), std::move(element));
+		}
 	}
 
 	virtual void prependElement(std::unique_ptr<cl> && element) {
@@ -435,21 +191,30 @@ public:
 		return obj;
 	}
 
-	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
+	std::string getHtml(ASTRequestFunc request) override {
 		std::string html;
-		for (auto & e : elements) {
+		for (auto & e : elements)
 			html += e->getHtml(request) + "\n";
-		}
 		return html;
 	}
-
 };
-
 
 /*
 	Base for all document-like elements, so multiline, multi-element structures
 */
 typedef _ASTListElement<_ASTElement> _ASTBlockElement;
+
+/*
+	Inline text template. Everything that can occure in plain Text should inherit from this class
+*/
+class _ASTInlineElement : virtual public _ASTElement {
+protected:
+	std::string className() {return "_ASTInlineElement";}
+public:
+	_ASTElement * containingElement() override;
+
+	virtual std::string literalText();
+};
 
 
 // -------------------------------------- //
@@ -458,52 +223,17 @@ typedef _ASTListElement<_ASTElement> _ASTBlockElement;
 
 
 /*
-	Inline text template. Everything that can occure in plain Text should inherit from this class
-*/
-class _ASTInlineElement : virtual public _ASTElement {
-
-	std::string className() {return "_ASTInlineElement";}
-
-public:
-	
-	_ASTElement * containingElement() override {
-		return parent;
-	}
-
-	virtual std::string literalText() {
-		return "";
-	}
-
-};
-
-/*
 	Represents Inline Text. Combines multiple ASTInlineElements to allow inline-styling
 */
 class ASTInlineText : public _ASTInlineElement, public _ASTListElement<_ASTInlineElement> {
 protected:
-
 	std::string className() {return "ASTInlineText";}
-
 public:
+	std::string literalText() override;
 
-	std::string literalText() override {
-		std::string res;
-		for (auto & e : elements)
-			res += e->literalText();
-		return res;
-	}
+	std::string toJson() override;
 
-	std::string toJson() override {
-		return _ASTListElement<_ASTInlineElement>::toJson();
-	}
-
-	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
-		std::string html;
-		for (auto & e : elements) {
-			html += e->getHtml(request);
-		}
-		return html;
-	}
+	std::string getHtml(std::function<_ASTElement*(std::string)> request) override;
 };
 
 /*
@@ -511,55 +241,19 @@ public:
 */
 class ASTPlainText : public _ASTInlineElement {
 protected:
-
-	std::string content;
-
 	std::string className() {return "ASTPlainText";}
 
+	std::string content;
 public:
-
 	ASTPlainText(const std::string & content) : content(content) {}
-
 	ASTPlainText(int chr) : content(1, chr) {}
-
 	ASTPlainText(int count, int chr) : content(count, chr) {}
 
-	std::string literalText() override {
-		return content;
-	}
+	std::string literalText() override;
 
-	std::string toJson() {
-		std::string obj = "{\"class\": \"" + className() + "\",";
-		obj += "\"content\": \"";
+	std::string toJson() override;
 
-		obj += content;
-
-		obj += "\",";
-		obj += cmdJson();
-		obj += "}";
-		return obj;
-	}
-
-	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
-		std::string cnt;
-		for (auto c : content) {
-			switch (c) {
-				case '&':
-					cnt += "&amp;";
-					break;
-				case '<':
-					cnt += "&lt;";
-					break;
-				case '>':
-					cnt += "&gt;";
-					break;
-				default:
-					cnt += c;
-			}
-		}
-
-		return cnt;
-	}
+	std::string getHtml(ASTRequestFunc request) override;
 };
 
 /*
@@ -567,16 +261,11 @@ public:
 */
 class ASTLinebreak : public _ASTInlineElement {
 protected:
-
 	std::string className() {return "ASTLinebreak";}
-
 public:
-
 	ASTLinebreak() {}
 
-	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
-		return "<br>";
-	}
+	std::string getHtml(ASTRequestFunc request) override;
 };
 
 /*
@@ -584,66 +273,22 @@ public:
 */
 class ASTTextModification : public _ASTInlineElement {
 protected:
-
-	char symbol = 0;
-
-	std::unique_ptr<_ASTInlineElement> content;
-
 	std::string className() {return "ASTTextModification";}
 
+	char symbol = 0;
+	std::unique_ptr<_ASTInlineElement> content;
 public:
-
 	ASTTextModification(char symbol) : symbol(symbol) {}
-
 	ASTTextModification(char symbol, std::unique_ptr<_ASTInlineElement> element) 
 	: symbol(symbol), content(std::move(element)) {
 		content->parent = this;
 	}
 
-	std::string literalText() override {
-		return content->literalText();
-	}
+	std::string literalText() override;
 
-	std::string toJson() {
-		std::string obj = "{\"class\": \"" + className() + "\",";
-		obj += "\"symbol\": \"";
-		obj += symbol;
-		obj += "\","; 
-		obj += "\"content\": ";
+	std::string toJson();
 
-		obj += content->toJson();
-		obj += ",";
-
-		obj += cmdJson();
-		obj += "}";
-		return obj;
-	}
-
-	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
-		std::string tag;
-		switch (symbol) {
-			case '*': 
-				tag = "strong";
-				break;
-			case '/': 
-				tag = "em";
-				break;
-			case '_': 
-				tag = "u";
-				break;
-			case '~': 
-				tag = "del";
-				break;
-			case '=': 
-				tag = "mark";
-				break;
-			case '`': 
-				tag = "code";
-				break;
-		}	
-		return "<" + tag + ">" + content->getHtml(request) + "</" + tag + ">";
-	}
-
+	std::string getHtml(ASTRequestFunc request) override;
 };
 
 /*
@@ -651,29 +296,16 @@ public:
 */
 class ASTEmoji : public _ASTInlineElement {
 protected:
-
-	std::string shortcode;
-
 	std::string className() {return "ASTEmoji";}
 
+	std::string shortcode;
 public:
 
 	ASTEmoji(const std::string & shortcode) : shortcode(shortcode) {}
 
-	std::string toJson() {
-		std::string obj = "{\"class\": \"" + className() + "\",";
-		obj += "\"shortcode\": \"";
-		obj += shortcode;
-		obj += "\",";
+	std::string toJson();
 
-		obj += cmdJson();
-		obj += "}";
-		return obj;
-	}
-
-	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
-		return ":EMOJI " + shortcode + ":";
-	}
+	std::string getHtml(ASTRequestFunc request) override;
 };
 
 /*
@@ -681,242 +313,79 @@ public:
 */
 class ASTModifier : public _ASTInlineElement {
 protected:
-
-	int type;
-	std::string url;
-	std::string command;
-	
-	std::unique_ptr<ASTInlineText> content;
-
 	std::string className() {return "ASTModifier";}
 
+	std::string url;
+	std::unique_ptr<ASTInlineText> content;
 public:
-
-	ASTModifier(int type, std::string url, std::string command, std::unique_ptr<ASTInlineText> content)
-		: type(type), url(url), command(command), content(std::move(content)) {
-			content->parent = this;
-		}
-
-	std::string literalText() override {
-		return content->literalText();
+	ASTModifier(std::string & url, std::unique_ptr<ASTInlineText> & content)
+	: url(url), content(std::move(content)) {
+		this->content->parent = this;
 	}
 
-	std::string toJson() {
-		std::string obj = "{\"class\": \"" + className() + "\",";
-		obj += "\"type\": \"";
-		obj += type;
-		obj += "\",";
+	std::string literalText() override;
 
-		obj += "\"url\": \"" + url + "\",";
-		obj += "\"command\": \"" + command + "\",";
-
-		obj += "\"content\":";
-		obj += content->toJson();
-		obj += ",";
-
-		obj += cmdJson();
-		obj += "}";
-		return obj;
-	}
-
+	std::string toJson();
 };
 
 /*
 	Represents Links with <a> element
 */
-class ASTModifierLink : public _ASTInlineElement {
+class ASTLink : public ASTModifier {
 protected:
-
-	std::string url;
-
-	std::unique_ptr<ASTInlineText> content;
-
-	std::string className() {return "ASTModifierLink";}
-
+	std::string className() {return "ASTLink";}
 public:
+	using ASTModifier::ASTModifier;
 
-	ASTModifierLink(std::string & url, std::unique_ptr<ASTInlineText> & content) : url(url), content(std::move(content)) {
-		this->content->parent = this;
-	}
-
-	std::string toJson() {
-		std::string obj = "{\"class\": \"" + className() + "\",";
-		obj += "\"url\": \"" + url + "\",";
-
-		obj += "\"content\":";
-		obj += content->toJson();
-		obj += ",";
-
-		obj += cmdJson();
-		obj += "}";
-		return obj;
-	}
-
-	std::string getHtml(std::function<_ASTElement*(std::string)> request) override;
+	std::string getHtml(ASTRequestFunc request) override;
 };
 
 /*
 	Represents Images
 */
-class ASTModifierImage : public _ASTInlineElement {
-protected:
-
-	std::string url;
-
-	std::unique_ptr<ASTInlineText> content;
-	
-	std::string className() {return "ASTModifierImage";}
-
+class ASTImage : public ASTModifier {
+protected:	
+	std::string className() {return "ASTImage";}
 public:
+	using ASTModifier::ASTModifier;
 
-	ASTModifierImage(std::string & url, std::unique_ptr<ASTInlineText> & content) : url(url), content(std::move(content)) {
-		this->content->parent = this;
-	}
-	
-	std::string toJson() {
-		std::string obj = "{\"class\": \"" + className() + "\",";
-		obj += "\"url\": \"" + url + "\",";
-
-		obj += "\"content\":";
-		obj += content->toJson();
-		obj += ",";
-
-		obj += cmdJson();
-		obj += "}";
-		return obj;
-	}
-
-	std::string getHtml(std::function<_ASTElement*(std::string)> request) override;
+	std::string getHtml(ASTRequestFunc request) override;
 };
 
 /*
 	Represents Footnotes
 */
-class ASTModifierFootnote : public _ASTInlineElement {
+class ASTFootnote : public ASTModifier {
 protected:
-
-	std::string id;
-
-	std::unique_ptr<ASTInlineText> content;
-	
-	std::string className() {return "ASTModifierFootnote";}
-
+	std::string className() {return "ASTFootnote";}
 public:
+	using ASTModifier::ASTModifier;
 
-	ASTModifierFootnote(std::string & id, std::unique_ptr<ASTInlineText> & content) : id(id), content(std::move(content)) {
-		this->content->parent = this;
-	}
-	
-	std::string toJson() {
-		std::string obj = "{\"class\": \"" + className() + "\",";
-		obj += "\"id\": \"" + id + "\",";
-
-		obj += "\"content\":";
-		obj += content->toJson();
-		obj += ",";
-
-		obj += cmdJson();
-		obj += "}";
-		return obj;
-	}
-
-	std::string getHtml(std::function<_ASTElement*(std::string)> request) override;
+	std::string getHtml(ASTRequestFunc request) override;
 };
 
 /*
 	Represents Heading Links
 */
-class ASTModifierHeadingLink : public _ASTInlineElement {
+class ASTHeadingLink : public ASTModifier {
 protected:
-
-	std::string id;
-
-	std::unique_ptr<ASTInlineText> content;
-	
-	std::string className() {return "ASTModifierHeadingLink";}
-
+	std::string className() {return "ASTHeadingLink";}
 public:
+	using ASTModifier::ASTModifier;
 
-	ASTModifierHeadingLink(std::string & id, std::unique_ptr<ASTInlineText> & content) : id(id), content(std::move(content)) {
-		this->content->parent = this;
-	}
-	
-	std::string toJson() {
-		std::string obj = "{\"class\": \"" + className() + "\",";
-		obj += "\"id\": \"" + id + "\",";
-
-		obj += "\"content\":";
-		obj += content->toJson();
-		obj += ",";
-
-		obj += cmdJson();
-		obj += "}";
-		return obj;
-	}
-
-	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
-		std::string html = "<a";
-		commands.attributes["href"] = "#" + id;
-		commands.addClass("h-link");
-		if (request("#" + id) == nullptr)
-			commands.addClass("missing");
-		html += commands.constructHeader(request);
-		html += ">";
-		html += content->getHtml(request);
-		html += "</a>";
-		return html;
-	}
+	std::string getHtml(ASTRequestFunc request) override;
 };
 
 /*
 	Represents Replaced Content
 */
-class ASTModifierReplace : public _ASTInlineElement {
+class ASTReplace : public ASTModifier {
 protected:
-
-	std::string id;
-
-	std::unique_ptr<ASTInlineText> content;
-	
-	std::string className() {return "ASTModifierReplace";}
-
+	std::string className() {return "ASTReplace";}
 public:
+	using ASTModifier::ASTModifier;
 
-	ASTModifierReplace(std::string & id, std::unique_ptr<ASTInlineText> & content) : id(id), content(std::move(content)) {
-		this->content->parent = this;
-	}
-	
-	std::string toJson() {
-		std::string obj = "{\"class\": \"" + className() + "\",";
-		obj += "\"id\": \"" + id + "\",";
-
-		obj += "\"content\":";
-		obj += content->toJson();
-		obj += ",";
-
-		obj += cmdJson();
-		obj += "}";
-		return obj;
-	}
-
-	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
-		_ASTBlockElement * replContent = dynamic_cast<_ASTBlockElement *>(request("<" + id));
-
-		std::string html = "<div";
-		if (replContent == nullptr)
-			commands.addClass("missing");
-		html += commands.constructHeader(request);
-		html += ">";
-
-		if (replContent == nullptr)
-			html += content->getHtml(request);
-		else {
-			for (auto & e : replContent->elements)
-				html += e->getHtml(request) + "\n";
-		}
-		html += "</div>";
-		return html;
-	}
+	std::string getHtml(ASTRequestFunc request) override;
 };
 
 
@@ -925,24 +394,16 @@ public:
 // -------------------------------------- //
 
 
-class ASTDocument;
-
 /*
 	Holds all elements of a file
 */
 class ASTDocument : public _ASTBlockElement {
 protected:
-
 	std::string className() {return "ASTDocument";}
-
 public:
-
 	std::unordered_map<std::string, ASTIdDefinition *> iddef;
 
-	_ASTElement * getDocument() override {
-		return this;
-	}
-
+	_ASTElement * getDocument() override;
 };
 
 /*
@@ -950,10 +411,7 @@ public:
 */
 class ASTIdDefinition : public _ASTBlockElement {
 protected:
-
-
 	std::string className() {return "ASTIdDefinition";}
-
 public:
 	std::string id;
 	std::string url;
@@ -961,84 +419,30 @@ public:
 
 	ASTIdDefinition(std::string id, std::string url, char type) : id(id), url(url), type(type) {}
 
-	void registerNow() {
-		ASTDocument * doc = dynamic_cast<ASTDocument *>(getDocument());
-		if (doc == nullptr)
-			return;
-		std::string _id(1, type);
-		_id += id;
-		doc->iddef[_id] = this;
-		if (type == '{')
-			commands.refName = id;
-	}
+	void registerNow();
 
-	std::string toJson() override {
-		std::string obj = "{\"class\": \"" + className() + "\",";
-		obj += "\"url\": \"" + url + "\",";
-		obj += "\"id\": \"" + id + "\",";
-		obj += "\"type\": \"" + std::to_string(type) + "\",";
-		obj += "\"elements\": [";
+	std::string toJson() override;
 
-		for (auto & e : elements) {
-			obj += e->toJson() + ",";
-		}
-
-		if (elements.size() != 0)
-			obj.erase(std::prev(obj.end()));
-
-		obj += "],";
-
-		obj += cmdJson();
-		obj += "}";
-		return obj;
-	}
-
-	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
-		return "";
-	}
+	std::string getHtml(ASTRequestFunc request) override;
 };
-
 
 /*
 	Represents Headings
 */
 class ASTHeading : public _ASTElement {
 protected:
-
-	int level = 0;
-
-	std::unique_ptr<ASTInlineText> content;
-
 	std::string className() override {return "ASTHeading";}
 
+	int level = 0;
+	std::unique_ptr<ASTInlineText> content;
 public:
-
 	ASTHeading(int level, std::unique_ptr<ASTInlineText> content) : level(level), content(std::move(content)) {
 		this->content->parent = this;
 	}
 
-	std::string toJson() {
-		std::string obj = "{\"class\": \"" + className() + "\",";
-		obj += "\"level\": " + std::to_string(level) + ",";
-		obj += "\"text\": ";
+	std::string toJson();
 
-		obj += content->toJson();
-		obj += ",";
-
-		obj += cmdJson();
-		obj += "}";
-		return obj;
-	}
-
-	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
-		std::string html = "<h" + std::to_string(level);
-		html += commands.constructHeader(request);
-		html += ">";
-		html += content->getHtml(request);
-		html += "</h" + std::to_string(level) + ">";
-		return html;
-	}
-
+	std::string getHtml(ASTRequestFunc request) override;
 };
 
 /*
@@ -1046,15 +450,9 @@ public:
 */
 class ASTHLine : public _ASTElement {
 protected:
-
 	std::string className() override {return "ASTHLine";}
-
 public:
-
-
-	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
-		return "<hr>";
-	}
+	std::string getHtml(ASTRequestFunc request) override;
 };
 
 /*
@@ -1062,18 +460,9 @@ public:
 */
 class ASTParagraph : public _ASTBlockElement {
 protected:
-
 	std::string className() {return "ASTParagraph";}
-
 public:
-	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
-		std::string html = "<p";
-		html += commands.constructHeader(request);
-		html += ">\n";
-		html += _ASTBlockElement::getHtml(request);
-		html += "</p>";
-		return html;
-	}
+	std::string getHtml(ASTRequestFunc request) override;
 };
 
 /*
@@ -1081,46 +470,16 @@ public:
 */
 class ASTBlockquote : public _ASTBlockElement {
 protected:
-
 	std::string className() {return "ASTBlockquote";}
 
 	bool centered;
-
 public:
-
 	ASTBlockquote() {}
-
 	ASTBlockquote(bool centered) : centered(centered) {}
 
-	std::string toJson() override {
-		std::string obj = "{\"class\": \"" + className() + "\",";
-		obj += "\"centered\": " + std::to_string(centered) + ",";
-		obj += "\"elements\": [";
+	std::string toJson() override;
 
-		for (auto & e : elements) {
-			obj += e->toJson() + ",";
-		}
-
-		if (elements.size() != 0)
-			obj.erase(std::prev(obj.end()));
-
-		obj += "],";
-
-		obj += cmdJson();
-		obj += "}";
-		return obj;
-	}
-
-	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
-		std::string html = "<blockquote";
-		if (centered)
-			commands.addClass("center");
-		html += commands.constructHeader(request);
-		html += ">\n";
-		html += _ASTBlockElement::getHtml(request);
-		html += "</blockquote>";
-		return html;
-	}
+	std::string getHtml(ASTRequestFunc request) override;
 };
 
 /*
@@ -1128,41 +487,15 @@ public:
 */
 class ASTListElement : public _ASTBlockElement {
 protected:
-
 	std::string className() {return "ASTListElement";}
 
 	unsigned long index;
-
 public:
-
 	ASTListElement(unsigned long index = 0) : index(index) {}
 
-	std::string toJson() override {
-		std::string obj = "{\"class\": \"" + className() + "\",";
-		obj += "\"index\": " + std::to_string(index) + ",";
-		obj += "\"elements\": [";
+	std::string toJson() override;
 
-		for (auto & e : elements) {
-			obj += e->toJson() + ",";
-		}
-		if (elements.size() != 0)
-			obj.erase(std::prev(obj.end()));
-
-		obj += "],";
-
-		obj += cmdJson();
-		obj += "}";
-		return obj;
-	}
-
-	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
-		std::string html = "<li";
-		html += commands.constructHeader(request);
-		html += ">";
-		html += _ASTBlockElement::getHtml(request);
-		html += "</li>";
-		return html;
-	}
+	std::string getHtml(ASTRequestFunc request) override;
 };
 
 /*
@@ -1170,18 +503,9 @@ public:
 */
 class ASTUnorderedList : public _ASTListElement<ASTListElement> {
 protected:
-
 	std::string className() {return "ASTUnorderedList";}
-
 public:
-	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
-		std::string html = "<ul";
-		html += commands.constructHeader(request);
-		html += ">\n";
-		html += _ASTListElement<ASTListElement>::getHtml(request);
-		html += "</ul>";
-		return html;
-	}
+	std::string getHtml(ASTRequestFunc request) override;
 };
 
 /*
@@ -1189,19 +513,9 @@ public:
 */
 class ASTOrderedList : public _ASTListElement<ASTListElement> {
 protected:
-
 	std::string className() {return "ASTOrderedList";}
-
 public:
-
-	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
-		std::string html = "<ol";
-		html += commands.constructHeader(request);
-		html += ">\n";
-		html += _ASTListElement<ASTListElement>::getHtml(request);
-		html += "</ol>";
-		return html;
-	}
+	std::string getHtml(ASTRequestFunc request) override;
 };
 
 /*
@@ -1209,49 +523,18 @@ public:
 */
 class ASTCodeBlock : public _ASTBlockElement {
 protected:
-
-	std::string lang;
-
-	std::unique_ptr<ASTInlineText> command;
-
 	std::string className() {return "ASTCodeBlock";}
 
+	std::string lang;
+	std::unique_ptr<ASTInlineText> command;
 public:
-
 	ASTCodeBlock(std::string lang) : lang(lang) {}
 
-	void addCommand(std::unique_ptr<ASTInlineText> & e) {
-		command = std::move(e);
-		command->parent = this;
-	}
+	void addCommand(std::unique_ptr<ASTInlineText> & e);
 
-	std::string toJson() override {
-		std::string obj = "{\"class\": \"" + className() + "\",";
-		obj += "\"lang\": \"" + lang + "\",";
-		obj += "\"elements\": [";
+	std::string toJson() override;
 
-		for (auto & e : elements) {
-			obj += e->toJson() + ",";
-		}
-
-		if (elements.size() != 0)
-			obj.erase(std::prev(obj.end()));
-
-		obj += "],";
-
-		obj += cmdJson();
-		obj += "}";
-		return obj;
-	}
-
-	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
-		std::string html = "<pre><code";
-		html += commands.constructHeader(request);
-		html += ">\n";
-		html += _ASTBlockElement::getHtml(request);
-		html += "</code></pre>";
-		return html;
-	}
+	std::string getHtml(ASTRequestFunc request) override;
 };
 
 /*
@@ -1259,47 +542,15 @@ public:
 */
 class ASTInfoBlock : public _ASTBlockElement {
 protected:
-
 	std::string className() {return "ASTInfoBlock";}
 
 	std::string type;
 	bool sym;
-
 public:
-
 	ASTInfoBlock() {}
-
 	ASTInfoBlock(std::string type, bool sym = false) : type(type), sym(sym) {}
 
-	std::string toJson() override {
-		std::string obj = "{\"class\": \"" + className() + "\",";
-		obj += "\"type\": \"" + type + "\",";
-		obj += "\"sym\": " + std::to_string(sym) + ",";
-		obj += "\"elements\": [";
+	std::string toJson() override;
 
-		for (auto & e : elements) {
-			obj += e->toJson() + ",";
-		}
-
-		if (elements.size() != 0)
-			obj.erase(std::prev(obj.end()));
-
-		obj += "],";
-
-		obj += cmdJson();
-		obj += "}";
-		return obj;
-	}
-
-	std::string getHtml(std::function<_ASTElement*(std::string)> request) override {
-		std::string html = "<blockquote";
-		commands.addClass(type);
-		if (sym)
-			commands.addClass("sym");
-		html += commands.constructHeader(request);
-		html += ">\n";
-		html += _ASTBlockElement::getHtml(request);
-		html += "</blockquote>";
-		return html;
-	}
+	std::string getHtml(ASTRequestFunc request) override;
 };
