@@ -124,6 +124,11 @@ void NotedownCompiler::addEmojiLUT(std::string filename) {
 	}
 }
 
+void NotedownCompiler::addEmojiLUT(std::vector<std::string> filenames) {
+	for (auto & e : filenames)
+		addEmojiLUT(e);
+}
+
 void NotedownCompiler::addSymbols(std::string str) {
 	for (auto e : str)
 		symbols.insert(e);
@@ -147,11 +152,6 @@ void NotedownCompiler::addFromFile(std::string filename, size_t order) {
 	mtx_documents.lock();
 	documents[order] = std::move(p.getDocument());
 	mtx_documents.unlock();
-}
-
-void NotedownCompiler::addFile(std::initializer_list<std::string> filenames, bool multithread) {
-	std::vector<std::string> vec(filenames);
-	addFile(vec, multithread);
 }
 
 void NotedownCompiler::addFile(std::vector<std::string> & filenames, bool multithread) {

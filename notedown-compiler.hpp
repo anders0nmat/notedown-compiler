@@ -117,6 +117,12 @@ public:
 	 * Adds an lookup table for emoji shortcodes
 	 */
 	void addEmojiLUT(std::string filename);
+	/**
+	 * Adds a list of lookup tables for emoji shortcodes.
+	 * @param filenames List of valid filenames
+	 * @param multithread Whether each file should be parsed with a separate thread (can speed up compilation)
+	 */
+	void addEmojiLUT(std::vector<std::string> filenames);
 
 	/**
 	 * Adds a modifying function to use in command blocks
@@ -140,7 +146,6 @@ public:
 	 * @param filenames List of valid filenames
 	 * @param multithread Whether each file should be parsed with a separate thread (can speed up compilation)
 	 */
-	void addFile(std::initializer_list<std::string> filenames, bool multithread = true);
 	void addFile(std::vector<std::string> & filenames, bool multithread = true);
 
 	void prepareAST();

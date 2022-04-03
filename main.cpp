@@ -74,7 +74,7 @@
 	I_italic : Prints text of Syntax "/" <Text> "/" as italic text
 */
 
-std::string fmtNow(const char * fmt) {
+std::string fmtNow(const char * fmt = "%c") {
 	static char buf[256];
 	time_t t;
 	struct tm * timeinfo;
@@ -83,10 +83,6 @@ std::string fmtNow(const char * fmt) {
 	timeinfo = localtime(&t);
 	strftime(buf, 256, fmt, timeinfo);
 	return buf;
-}
-
-std::string fmtNow() {
-	return fmtNow("%c");
 }
 
 std::unique_ptr<ASTUnorderedList> tocLevel(std::vector<ASTHeading *> & outline, size_t & index) {
@@ -114,7 +110,17 @@ std::unique_ptr<ASTUnorderedList> tocLevel(std::vector<ASTHeading *> & outline, 
 
 int main(int argc, char *argv[]) {
 	NotedownCompiler compiler;
-	compiler.addEmojiLUT("emoji_lut/emojis");
+	compiler.addEmojiLUT({ 
+		"emoji_lut/unicode-14/activities",
+		"emoji_lut/unicode-14/animals-nature",
+		"emoji_lut/unicode-14/flags",
+		"emoji_lut/unicode-14/food-drink",
+		"emoji_lut/unicode-14/objects",
+		"emoji_lut/unicode-14/people-body",
+		"emoji_lut/unicode-14/smileys-emotion",
+		"emoji_lut/unicode-14/symbols",
+		"emoji_lut/unicode-14/travel-places"
+	});
 	compiler.addDefaultHandlers();
 
 	compiler.addGeneratorFunc("now", [](_ASTElement * e, ASTProcess step, std::vector<std::string> & args) {
