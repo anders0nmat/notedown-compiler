@@ -6,10 +6,22 @@
 #include <unordered_map>
 #include <functional>
 
+enum ASTProcess {
+	procRegister, // Elements get the chance to register themselves to their parent
+	procResolve, // Elements resolve their commands, which processes dependencies
+	procConsume, // Elements search for empty Childs and aquire their commands (if possible)
+	procExecutePrep, // Elements execute their command functions
+	procExecuteMain, // Elements execute their command functions
+	procExecutePost, // Elements execute their command functions
+};
+
 class _ASTElement;
 class ASTIdDefinition;
+class ASTCommandContainer;
 
+typedef std::function<void(_ASTElement *, ASTProcess, std::vector<std::string> &)> ASTModFunc;
 typedef std::function<_ASTElement*(std::string)> ASTRequestFunc;
+typedef std::function<ASTModFunc(std::string)> ASTRequestModFunc;
 
 /*
 	Holding information of HTML attributes:
@@ -36,11 +48,12 @@ protected:
 public:
 	std::string refName;
 	std::string id;
-	std::string classes;
+	std::unordered_set<std::string> classes;
 	std::string title;
 	std::unordered_map<std::string, std::string> attributes;
-	std::string css;
-	std::vector<std::pair<std::string, std::vector<std::string>>> functions;
+	std::unordered_map<std::string, std::string> css;
+	std::pair<std::string, std::vector<std::string>> genFunction;
+	std::vector<std::pair<std::string, std::vector<std::string>>> modFunctions;
 	std::vector<std::string> refCommands;
 
 	std::unordered_map<std::string, std::string> flags;
@@ -67,7 +80,7 @@ public:
 	virtual void resolve(ASTRequestFunc request);
 	virtual std::string constructHeader(ASTRequestFunc request);
 
-	void execute() {}
+	virtual void execute(_ASTElement * caller, ASTProcess step, ASTRequestModFunc modFunc);
 };
 
 
@@ -89,14 +102,21 @@ protected:
 	virtual std::string className() {return "_ASTElement";}
 
 	std::string cmdJson();
+
+	virtual void _consume(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc);
+	virtual void _register(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc);
+	virtual void _resolve(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc);
+
+	virtual void _execute(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc);
 public:
 	ASTCommand commands;
-	std::unordered_map<std::string, std::string> attributes;
 	_ASTElement * parent = nullptr;
 
 	virtual _ASTElement * getDocument();
 	virtual _ASTElement * containingElement();
 	virtual void registerNow() {}
+
+	virtual void process(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc);
 	
 	virtual ~_ASTElement() {}
 
@@ -106,8 +126,6 @@ public:
 
 	virtual void addCommand(ASTCommand && command);
 	virtual void addCommand(ASTCommand & command);
-
-	virtual void executeCommands();
 
 	virtual std::string getHtml(ASTRequestFunc request);
 };
@@ -120,14 +138,34 @@ class _ASTListElement : virtual public _ASTElement {
 protected:
 	std::string className() {return "_ASTListElement";}
 
+	void _consume(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
+		for (auto & e : elements) {
+			if (e->isEmpty())
+				commands.integrate(e->commands);
+		}
+	}
+
 public:
 	std::vector<std::unique_ptr<cl>> elements;
+
+	void process(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) override {
+		for (auto & e : elements)
+			e->process(step, request, modFunc);
+		_ASTElement::process(step, request, modFunc);
+	}
 
 	void registerNow() override {
 		for (auto & e : elements)
 			e->registerNow();
 	}
 	
+	bool isEmpty() override {
+		for (auto & e : elements)
+			if (!e->isEmpty())
+				return false;
+		return true;
+	}
+
 	virtual void addElement(std::unique_ptr<cl> & element) {
 		if (element != nullptr) {
 			element->parent = this;
@@ -140,6 +178,11 @@ public:
 			element->parent = this;
 			elements.push_back(std::move(element));
 		}
+	}
+
+	virtual void addElements(std::vector<std::unique_ptr<cl>> & elements) {
+		for (auto & e : elements)
+			addElement(e);
 	}
 
 	virtual void addElements(std::vector<std::unique_ptr<cl>> && elements) {
@@ -194,7 +237,8 @@ public:
 	std::string getHtml(ASTRequestFunc request) override {
 		std::string html;
 		for (auto & e : elements)
-			html += e->getHtml(request) + "\n";
+			if (!e->isEmpty())
+				html += e->getHtml(request) + "\n";
 		return html;
 	}
 };
@@ -210,6 +254,8 @@ typedef _ASTListElement<_ASTElement> _ASTBlockElement;
 class _ASTInlineElement : virtual public _ASTElement {
 protected:
 	std::string className() {return "_ASTInlineElement";}
+
+	void _consume(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) override;
 public:
 	_ASTElement * containingElement() override;
 
@@ -222,13 +268,33 @@ public:
 // -------------------------------------- //
 
 
+class ASTCommandContainer : public _ASTInlineElement {
+protected:
+	std::string className() {return "ASTCommandContainer";}
+
+	std::unique_ptr<_ASTElement> content;
+
+	void _register(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) override;
+public:
+	void setContent(std::unique_ptr<_ASTElement> & element);
+	void setContent(std::unique_ptr<_ASTElement> && element);
+
+	bool isEmpty() override;
+
+	std::string getHtml(ASTRequestFunc request) override;
+};
+
 /*
 	Represents Inline Text. Combines multiple ASTInlineElements to allow inline-styling
 */
 class ASTInlineText : public _ASTInlineElement, public _ASTListElement<_ASTInlineElement> {
 protected:
 	std::string className() {return "ASTInlineText";}
+
+	void _consume(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) override;
 public:
+	_ASTElement * containingElement() override;
+
 	std::string literalText() override;
 
 	std::string toJson() override;
@@ -242,14 +308,17 @@ public:
 class ASTPlainText : public _ASTInlineElement {
 protected:
 	std::string className() {return "ASTPlainText";}
-
-	std::string content;
 public:
+	std::string content;
+
+	ASTPlainText() {}
 	ASTPlainText(const std::string & content) : content(content) {}
 	ASTPlainText(int chr) : content(1, chr) {}
 	ASTPlainText(int count, int chr) : content(count, chr) {}
 
 	std::string literalText() override;
+
+	bool isEmpty() override;
 
 	std::string toJson() override;
 
@@ -264,6 +333,8 @@ protected:
 	std::string className() {return "ASTLinebreak";}
 public:
 	ASTLinebreak() {}
+
+	bool isEmpty() override;
 
 	std::string getHtml(ASTRequestFunc request) override;
 };
@@ -286,6 +357,8 @@ public:
 
 	std::string literalText() override;
 
+	bool isEmpty() override;
+
 	std::string toJson();
 
 	std::string getHtml(ASTRequestFunc request) override;
@@ -303,6 +376,8 @@ public:
 
 	ASTEmoji(const std::string & shortcode) : shortcode(shortcode) {}
 
+	bool isEmpty() override;
+
 	std::string toJson();
 
 	std::string getHtml(ASTRequestFunc request) override;
@@ -314,16 +389,18 @@ public:
 class ASTModifier : public _ASTInlineElement {
 protected:
 	std::string className() {return "ASTModifier";}
-
+public:
 	std::string url;
 	std::unique_ptr<ASTInlineText> content;
-public:
+
 	ASTModifier(std::string & url, std::unique_ptr<ASTInlineText> & content)
 	: url(url), content(std::move(content)) {
 		this->content->parent = this;
 	}
 
 	std::string literalText() override;
+
+	bool isEmpty() override;
 
 	std::string toJson();
 };
@@ -334,6 +411,8 @@ public:
 class ASTLink : public ASTModifier {
 protected:
 	std::string className() {return "ASTLink";}
+
+	void _resolve(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) override;
 public:
 	using ASTModifier::ASTModifier;
 
@@ -346,8 +425,12 @@ public:
 class ASTImage : public ASTModifier {
 protected:	
 	std::string className() {return "ASTImage";}
+
+	void _resolve(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) override;
 public:
 	using ASTModifier::ASTModifier;
+
+	bool isEmpty() override;
 
 	std::string getHtml(ASTRequestFunc request) override;
 };
@@ -358,6 +441,8 @@ public:
 class ASTFootnote : public ASTModifier {
 protected:
 	std::string className() {return "ASTFootnote";}
+
+	void _resolve(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) override;
 public:
 	using ASTModifier::ASTModifier;
 
@@ -385,6 +470,20 @@ protected:
 public:
 	using ASTModifier::ASTModifier;
 
+	bool isEmpty() override;
+
+	std::string getHtml(ASTRequestFunc request) override;
+};
+
+/*
+	Represents styled Content
+*/
+class ASTStyled : public ASTModifier {
+protected:
+	std::string className() {return "ASTStyled";}
+public:
+	using ASTModifier::ASTModifier;
+
 	std::string getHtml(ASTRequestFunc request) override;
 };
 
@@ -401,7 +500,7 @@ class ASTDocument : public _ASTBlockElement {
 protected:
 	std::string className() {return "ASTDocument";}
 public:
-	std::unordered_map<std::string, ASTIdDefinition *> iddef;
+	std::unordered_map<std::string, _ASTElement *> iddef;
 
 	_ASTElement * getDocument() override;
 };
@@ -412,12 +511,16 @@ public:
 class ASTIdDefinition : public _ASTBlockElement {
 protected:
 	std::string className() {return "ASTIdDefinition";}
+
+	void _register(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) override;
 public:
 	std::string id;
 	std::string url;
 	char type;
 
 	ASTIdDefinition(std::string id, std::string url, char type) : id(id), url(url), type(type) {}
+
+	bool isEmpty() override;
 
 	void registerNow();
 
@@ -433,12 +536,18 @@ class ASTHeading : public _ASTElement {
 protected:
 	std::string className() override {return "ASTHeading";}
 
+	void _consume(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) override;
+public:
 	int level = 0;
 	std::unique_ptr<ASTInlineText> content;
-public:
+
 	ASTHeading(int level, std::unique_ptr<ASTInlineText> content) : level(level), content(std::move(content)) {
 		this->content->parent = this;
 	}
+
+	void process(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) override;
+
+	bool isEmpty() override;
 
 	std::string toJson();
 
@@ -452,6 +561,8 @@ class ASTHLine : public _ASTElement {
 protected:
 	std::string className() override {return "ASTHLine";}
 public:
+	bool isEmpty() override;
+
 	std::string getHtml(ASTRequestFunc request) override;
 };
 
@@ -471,9 +582,9 @@ public:
 class ASTBlockquote : public _ASTBlockElement {
 protected:
 	std::string className() {return "ASTBlockquote";}
-
-	bool centered;
 public:
+	bool centered;
+
 	ASTBlockquote() {}
 	ASTBlockquote(bool centered) : centered(centered) {}
 
@@ -488,9 +599,9 @@ public:
 class ASTListElement : public _ASTBlockElement {
 protected:
 	std::string className() {return "ASTListElement";}
-
-	unsigned long index;
 public:
+	unsigned long index;
+
 	ASTListElement(unsigned long index = 0) : index(index) {}
 
 	std::string toJson() override;
@@ -524,10 +635,10 @@ public:
 class ASTCodeBlock : public _ASTBlockElement {
 protected:
 	std::string className() {return "ASTCodeBlock";}
-
+public:
 	std::string lang;
 	std::unique_ptr<ASTInlineText> command;
-public:
+
 	ASTCodeBlock(std::string lang) : lang(lang) {}
 
 	void addCommand(std::unique_ptr<ASTInlineText> & e);
@@ -543,10 +654,10 @@ public:
 class ASTInfoBlock : public _ASTBlockElement {
 protected:
 	std::string className() {return "ASTInfoBlock";}
-
+public:
 	std::string type;
 	bool sym;
-public:
+
 	ASTInfoBlock() {}
 	ASTInfoBlock(std::string type, bool sym = false) : type(type), sym(sym) {}
 

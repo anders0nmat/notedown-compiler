@@ -69,7 +69,7 @@ complete - Tested and working (as expected)
   - Tables
   - Fenced Code Blocks (untested)
   - Footnotes (70%)
-  - Heading IDs
+  - Heading IDs (untested)
   - Definition List
   - Task List
   - Emoji (40%)
@@ -80,10 +80,10 @@ complete - Tested and working (as expected)
   - ~~HTML Tag Support~~
   - Admonitions (untested)
 - My Contribution
-  - Element Commands (70%)
-  - Better Table Formatting (80%)
+  - Element Commands (untested)
+  - Better Table Formatting (untested)
   - Collapsible Headings
-  - Replace Content (80%)
+  - Replace Content (untested)
 
 ### Headings
 

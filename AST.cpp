@@ -1,5 +1,6 @@
 #include <unordered_set>
 
+#include "notedown-compiler.hpp"
 #include "AST.hpp"
 
 // ----- ASTCommand ----- //
@@ -77,7 +78,7 @@ ASTCommand::ASTCommand(std::string command) {
 			std::vector cls(splitAt(e, '.'));
 			for (auto & c : cls) {
 				if (strisiden(c))
-					classes += (classes.empty() ? "" : " ") + c;
+					classes.insert(c);
 			}
 			continue;
 		}
@@ -108,8 +109,27 @@ ASTCommand::ASTCommand(std::string command) {
 						else
 							f.second.push_back(arg);
 					}
-					functions.push_back(f);
 				}
+				genFunction = f;
+			}
+			
+			continue;
+		}
+		if (e[0] == '&' && e.length() > 1) {
+			auto funcarg = apartAt(e.substr(1), ':');
+			if (strisiden(funcarg.first)) {
+				std::pair<std::string, std::vector<std::string>> f;
+				f.first = funcarg.first;
+				if (!funcarg.second.empty()) {
+					auto args = splitSnippets(funcarg.second, ',');
+					for (auto & arg : args) {
+						if (arg[0] == '"')
+							f.second.push_back(arg.substr(1, arg.length() - 2));
+						else
+							f.second.push_back(arg);
+					}
+				}
+				modFunctions.push_back(f);
 			}
 			
 			continue;
@@ -120,7 +140,7 @@ ASTCommand::ASTCommand(std::string command) {
 				if (funcarg.second[0] == '"') {
 					funcarg.second = funcarg.second.substr(1, funcarg.second.length() - 2);
 				}
-				css.append((css.empty() ? "" : " ") + funcarg.first + ": " + funcarg.second + ";");
+				css.emplace(funcarg.first, funcarg.second);
 			}
 			continue;
 		}
@@ -134,15 +154,23 @@ ASTCommand::ASTCommand(std::string command) {
 }
 
 void ASTCommand::addClass(std::string className) {
-	classes += (classes.empty() ? "" : " ") + className;
+	classes.insert(className);
 }
 
 std::string ASTCommand::toJson() {
 	std::string obj = "{\"class\": \"" + className() + "\",";
 	obj += "\"id\": \"" + id + "\",";
-	obj += "\"classes\": \"" + classes + "\",";
+	obj += "\"classes\": \"";
+	for (auto & e : classes) {
+		obj += " " + e;
+	}
+	obj += "\",";
 	obj += "\"title\": \"" + title + "\",";
-	obj += "\"css\": \"" + css + "\",";
+	obj += "\"css\": \"";
+	for (auto & p : css) {
+		obj += " " + p.first + ":" + p.second + ";";
+	}
+	obj += "\",";
 
 	obj += "\"attributes\": {";
 
@@ -155,9 +183,19 @@ std::string ASTCommand::toJson() {
 
 	obj += "},";
 
-	obj += "\"functions\": {";
+	obj += "\"genFunction\": {";	
+	obj += "\"" + genFunction.first + "\": [";
+	for (auto arg : genFunction.second) {
+		obj += "\"" + arg + "\",";
+	}
+	if (genFunction.second.size() != 0)
+		obj.erase(std::prev(obj.end()));
+	obj += "],";	
+	obj += "},";
 
-	for (auto & e : functions) {
+	obj += "\"modFunctions\": {";
+
+	for (auto & e : modFunctions) {
 		obj += "\"" + e.first + "\": [";
 		for (auto arg : e.second) {
 			obj += "\"" + arg + "\",";
@@ -167,7 +205,7 @@ std::string ASTCommand::toJson() {
 		obj += "],";
 	}		
 	
-	if (attributes.size() != 0)
+	if (modFunctions.size() != 0)
 		obj.erase(std::prev(obj.end()));
 
 	obj += "}";
@@ -179,13 +217,15 @@ std::string ASTCommand::toJson() {
 
 void ASTCommand::merge(ASTCommand & other) {
 	id = other.id;
-	classes += (classes.empty() ? "" : " ") + other.classes;
+	classes.insert(other.classes.begin(), other.classes.end());
 	title = other.title;
 	for (auto & p : other.attributes)
 		attributes[p.first] = p.second;
-	css += (css.empty() ? "" : " ") + other.css;
-	for (auto & e : other.functions)
-		functions.push_back(e);
+	for (auto & p : other.css)
+		css[p.first] = p.second;
+	genFunction = other.genFunction;
+	for (auto & e : other.modFunctions)
+		modFunctions.push_back(e);
 	for (auto & p : other.flags)
 		flags[p.first] = p.second;
 	for (auto & e : other.refCommands)
@@ -194,13 +234,15 @@ void ASTCommand::merge(ASTCommand & other) {
 
 void ASTCommand::merge(ASTCommand && other) {
 	id = other.id;
-	classes += (classes.empty() ? "" : " ") + other.classes;
+	classes.insert(other.classes.begin(), other.classes.end());
 	title = other.title;
 	for (auto & p : other.attributes)
 		attributes[p.first] = p.second;
-	css += (css.empty() ? "" : " ") + other.css;
-	for (auto & e : other.functions)
-		functions.push_back(e);
+	for (auto & p : other.css)
+		css[p.first] = p.second;
+	genFunction = other.genFunction;
+	for (auto & e : other.modFunctions)
+		modFunctions.push_back(e);
 	for (auto & p : other.flags)
 		flags[p.first] = p.second;
 	for (auto & e : other.refCommands)
@@ -210,14 +252,16 @@ void ASTCommand::merge(ASTCommand && other) {
 void ASTCommand::integrate(ASTCommand && other) {
 	if (id.empty())
 		id = other.id;
-	classes += (classes.empty() ? "" : " ") + other.classes;
+	classes.insert(other.classes.begin(), other.classes.end());
 	if (title.empty())
 		title = other.title;
 	for (auto & p : other.attributes)
 		attributes.insert(p);
-	css += (css.empty() ? "" : " ") + other.css;
-	for (auto & e : other.functions)
-		functions.push_back(e);
+	css.insert(other.css.begin(), other.css.end());
+	if (genFunction.first.empty())
+		genFunction = other.genFunction;
+	for (auto & e : other.modFunctions)
+		modFunctions.push_back(e);
 	for (auto & p : other.flags)
 		flags.insert(p);
 	for (auto & e : other.refCommands)
@@ -227,14 +271,16 @@ void ASTCommand::integrate(ASTCommand && other) {
 void ASTCommand::integrate(ASTCommand & other) {
 	if (id.empty())
 		id = other.id;
-	classes += (classes.empty() ? "" : " ") + other.classes;
+	classes.insert(other.classes.begin(), other.classes.end());
 	if (title.empty())
 		title = other.title;
 	for (auto & p : other.attributes)
 		attributes.insert(p);
-	css += (css.empty() ? "" : " ") + other.css;
-	for (auto & e : other.functions)
-		functions.push_back(e);
+	css.insert(other.css.begin(), other.css.end());
+	if (genFunction.first.empty())
+		genFunction = other.genFunction;
+	for (auto & e : other.modFunctions)
+		modFunctions.push_back(e);
 	for (auto & p : other.flags)
 		flags.insert(p);
 	for (auto & e : other.refCommands)
@@ -257,15 +303,42 @@ std::string ASTCommand::constructHeader(ASTRequestFunc request) {
 	std::string header;
 	if (id != "")
 		header += " id=\"" + id + "\"";
-	if (classes != "")
-		header += " class=\"" + classes + "\"";
+	if (!classes.empty()) {
+		std::string clsAtr;
+		for (auto & e : classes) {
+			clsAtr += (clsAtr.empty() ? "" : " ") + e;
+		}
+		header += " class=\"" + clsAtr + "\"";
+	}
 	if (title != "")
 		header += " title=\"" + title + "\"";
-	if (css != "")
-		header += " style=\"" + css + "\"";
+	if (!css.empty()) {
+		std::string cssAtr;
+		for (auto & p : css) {
+			cssAtr += (cssAtr.empty() ? "" : " ") + p.first + ": " + p.second + ";";
+		}
+		header += " style=\"" + cssAtr + "\"";
+	}
 	for (auto & p : attributes)
 		header += " " + p.first + "=\"" + p.second + "\"";
 	return header;
+}
+
+void ASTCommand::execute(_ASTElement * caller, ASTProcess step, ASTRequestModFunc modFunc) {
+	ASTModFunc func;
+	if (!genFunction.first.empty()) {
+		func = modFunc("$" + genFunction.first);
+		if (func) {
+			func(caller, step, genFunction.second);
+		}
+	}
+	for (auto & e : modFunctions) {
+		if (!e.first.empty()) {
+			func = modFunc("&" + e.first);
+			if (func)
+				func(caller, step, e.second);
+		}
+	}
 }
 
 
@@ -280,12 +353,49 @@ std::string _ASTElement::cmdJson() {
 	return "\"command\": " + commands.toJson();
 }
 
+void _ASTElement::_consume(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
+
+}
+
+void _ASTElement::_register(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
+
+}
+
+void _ASTElement::_resolve(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
+	commands.resolve(request);
+}
+
+void _ASTElement::_execute(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
+	commands.execute(this, step, modFunc);
+}
+
 _ASTElement * _ASTElement::getDocument() {
-	return parent;
+	return parent->getDocument();
 }
 
 _ASTElement * _ASTElement::containingElement() {
 	return this;
+}
+
+void _ASTElement::process(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
+	switch (step) {
+	case procConsume:
+		_consume(step, request, modFunc);
+		break;
+	case procRegister:
+		_register(step, request, modFunc);
+		break;
+	case procResolve:
+		_resolve(step, request, modFunc);
+		break;
+	case procExecutePrep:
+	case procExecuteMain:
+	case procExecutePost:
+		_execute(step, request, modFunc);
+		break;
+	default:
+		break;
+	}
 }
 
 std::string _ASTElement::toJson() {
@@ -307,18 +417,16 @@ void _ASTElement::addCommand(ASTCommand & command) {
 	commands.merge(command);
 }
 
-void _ASTElement::executeCommands() {
-	commands.execute();
-}
-
 std::string _ASTElement::getHtml(ASTRequestFunc request) {
 	return "";
 }
 
 // ----- _ASTInlineElement ----- //
 
+void _ASTInlineElement::_consume(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {}
+
 _ASTElement * _ASTInlineElement::containingElement() {
-	return parent;
+	return parent->containingElement();
 }
 
 std::string _ASTInlineElement::literalText() {
@@ -331,7 +439,52 @@ std::string _ASTInlineElement::literalText() {
 // -------------------------------------- //
 
 
+// ----- ASTCommandContainer ----- //
+
+void ASTCommandContainer::_register(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
+	if (!commands.genFunction.first.empty())
+		return;
+	// Does not create content, can cascade up
+	_ASTElement * container = containingElement();
+	if (container == nullptr)
+		return;
+	container->commands.integrate(commands);
+	commands = ASTCommand(); // Empty this command
+}
+
+void ASTCommandContainer::setContent(std::unique_ptr<_ASTElement> & element) {
+	content = std::move(element);
+}
+
+void ASTCommandContainer::setContent(std::unique_ptr<_ASTElement> && element) {
+	content = std::move(element);
+}
+
+bool ASTCommandContainer::isEmpty() {
+	return content == nullptr;
+}
+
+std::string ASTCommandContainer::getHtml(ASTRequestFunc request) {
+	if (content == nullptr)
+		return "";
+
+	std::string html = "<span";
+	html += commands.constructHeader(request);
+	html += ">";
+	html += content->getHtml(request);
+	html += "</span>";
+	return html;
+}
+
 // ----- ASTInlineText ----- //
+
+void ASTInlineText::_consume(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
+	_ASTInlineElement::_consume(step, request, modFunc);
+}
+
+_ASTElement * ASTInlineText::containingElement() {
+	return _ASTInlineElement::containingElement();
+}
 
 std::string ASTInlineText::literalText() {
 	std::string res;
@@ -356,6 +509,10 @@ std::string ASTInlineText::getHtml(std::function<_ASTElement*(std::string)> requ
 
 std::string ASTPlainText::literalText() {
 	return content;
+}
+
+bool ASTPlainText::isEmpty() {
+	return content.empty();
 }
 
 std::string ASTPlainText::toJson() {
@@ -393,6 +550,10 @@ std::string ASTPlainText::getHtml(ASTRequestFunc request) {
 
 // ----- ASTLinebreak ----- //
 
+bool ASTLinebreak::isEmpty() {
+	return false;
+}
+
 std::string ASTLinebreak::getHtml(ASTRequestFunc request) {
 	return "<br>";
 }
@@ -401,6 +562,10 @@ std::string ASTLinebreak::getHtml(ASTRequestFunc request) {
 
 std::string ASTTextModification::literalText() {
 	return content->literalText();
+}
+
+bool ASTTextModification::isEmpty() {
+	return content->isEmpty();
 }
 
 std::string ASTTextModification::toJson() {
@@ -445,6 +610,10 @@ std::string ASTTextModification::getHtml(ASTRequestFunc request) {
 
 // ----- ASTEmoji ----- //
 
+bool ASTEmoji::isEmpty() {
+	return shortcode.empty();
+}
+
 std::string ASTEmoji::toJson() {
 	std::string obj = "{\"class\": \"" + className() + "\",";
 	obj += "\"shortcode\": \"";
@@ -457,10 +626,17 @@ std::string ASTEmoji::toJson() {
 }
 
 std::string ASTEmoji::getHtml(ASTRequestFunc request) {
-	return ":EMOJI " + shortcode + ":";
+	ASTPlainText * text = dynamic_cast<ASTPlainText *>(request(":" + shortcode));
+	if (text == nullptr)
+		return ":" + shortcode + ":";
+	return text->getHtml(request);
 }
 
 // ----- ASTModifier ----- //
+
+bool ASTModifier::isEmpty() {
+	return content->isEmpty();
+}
 
 std::string ASTModifier::literalText() {
 	return content->literalText();
@@ -481,7 +657,7 @@ std::string ASTModifier::toJson() {
 
 // ----- ASTLink ----- //
 
-std::string ASTLink::getHtml(ASTRequestFunc request) {
+void ASTLink::_resolve(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
 	if (url[0] == '%') {
 		ASTIdDefinition * def = dynamic_cast<ASTIdDefinition *>(request("(" + url.substr(1)));
 		if (def != nullptr) {
@@ -490,6 +666,10 @@ std::string ASTLink::getHtml(ASTRequestFunc request) {
 		}
 	}
 
+	commands.resolve(request);
+}
+
+std::string ASTLink::getHtml(ASTRequestFunc request) {
 	std::string html = "<a";
 	commands.attributes["href"] = url;
 	html += commands.constructHeader(request);
@@ -501,7 +681,11 @@ std::string ASTLink::getHtml(ASTRequestFunc request) {
 
 // ----- ASTImage ----- //
 
-std::string ASTImage::getHtml(ASTRequestFunc request) {
+bool ASTImage::isEmpty() {
+	return false;
+}
+
+void ASTImage::_resolve(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
 	if (url[0] == '%') {
 		ASTIdDefinition * def = dynamic_cast<ASTIdDefinition *>(request("(" + url.substr(1)));
 		if (def != nullptr) {
@@ -510,6 +694,10 @@ std::string ASTImage::getHtml(ASTRequestFunc request) {
 		}
 	}
 
+	commands.resolve(request);
+}
+
+std::string ASTImage::getHtml(ASTRequestFunc request) {
 	std::string html = "<img";
 	commands.attributes["src"] = url;
 	commands.attributes["alt"] = content->literalText();
@@ -520,7 +708,7 @@ std::string ASTImage::getHtml(ASTRequestFunc request) {
 
 // ----- ASTFootnote ----- //
 
-std::string ASTFootnote::getHtml(ASTRequestFunc request) {
+void ASTFootnote::_resolve(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
 	if (url[0] == '%') {
 		ASTIdDefinition * def = dynamic_cast<ASTIdDefinition *>(request("(" + url.substr(1)));
 		if (def != nullptr) {
@@ -529,10 +717,14 @@ std::string ASTFootnote::getHtml(ASTRequestFunc request) {
 		}
 	}
 
+	commands.resolve(request);
+}
+
+std::string ASTFootnote::getHtml(ASTRequestFunc request) {
 	std::string html = "<a";
 	commands.attributes["href"] = "#" + url;
 	commands.addClass("footnote");
-	if (request("^" + url))
+	if (request("^" + url) == nullptr)
 		commands.addClass("missing");
 	html += commands.constructHeader(request);
 	html += ">";
@@ -558,6 +750,10 @@ std::string ASTHeadingLink::getHtml(ASTRequestFunc request) {
 
 // ----- ASTReplace ----- //
 
+bool ASTReplace::isEmpty() {
+	return false;
+}
+
 std::string ASTReplace::getHtml(ASTRequestFunc request) {
 	_ASTBlockElement * replContent = dynamic_cast<_ASTBlockElement *>(request("<" + url));
 
@@ -577,6 +773,17 @@ std::string ASTReplace::getHtml(ASTRequestFunc request) {
 	return html;
 }
 
+// ----- ASTStyled ----- //
+
+std::string ASTStyled::getHtml(ASTRequestFunc request) {
+	std::string html = "<span";
+	html += commands.constructHeader(request);
+	html += ">";
+	html += content->getHtml(request);
+	html += "</span>";
+	return html;
+}
+
 
 // -------------------------------------- //
 // --------- MULTILINE ELEMENTS --------- //
@@ -591,7 +798,7 @@ _ASTElement * ASTDocument::getDocument() {
 
 // ----- ASTIdDefinition ----- //
 
-void ASTIdDefinition::registerNow() {
+void ASTIdDefinition::_register(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
 	ASTDocument * doc = dynamic_cast<ASTDocument *>(getDocument());
 	if (doc == nullptr)
 		return;
@@ -600,6 +807,14 @@ void ASTIdDefinition::registerNow() {
 	doc->iddef[_id] = this;
 	if (type == '{')
 		commands.refName = id;
+}
+
+bool ASTIdDefinition::isEmpty() {
+	return true;
+}
+
+void ASTIdDefinition::registerNow() {
+	
 }
 
 std::string ASTIdDefinition::toJson() {
@@ -629,11 +844,32 @@ std::string ASTIdDefinition::getHtml(ASTRequestFunc request) {
 
 // ----- ASTHeading ----- //
 
+void ASTHeading::_consume(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
+	if (content->isEmpty())
+		commands.integrate(content->commands);
+
+	if (commands.id.empty())
+		commands.id = Notedown::makeId(content->literalText());
+
+	ASTDocument * doc = dynamic_cast<ASTDocument *>(getDocument());
+	if (doc == nullptr)
+		return;
+	doc->iddef["#" + commands.id] = this;
+}
+
+void ASTHeading::process(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
+	content->process(step, request, modFunc);
+	_ASTElement::process(step, request, modFunc);
+}
+
+bool ASTHeading::isEmpty() {
+	return false;
+}
+
 std::string ASTHeading::toJson() {
 	std::string obj = "{\"class\": \"" + className() + "\",";
 	obj += "\"level\": " + std::to_string(level) + ",";
 	obj += "\"text\": ";
-
 	obj += content->toJson();
 	obj += ",";
 
@@ -652,6 +888,10 @@ std::string ASTHeading::getHtml(ASTRequestFunc request) {
 }
 
 // ----- ASTHLine ----- //
+
+bool ASTHLine::isEmpty() {
+	return false;
+}
 
 std::string ASTHLine::getHtml(ASTRequestFunc request) {
 	return "<hr>";
@@ -780,7 +1020,7 @@ std::string ASTCodeBlock::toJson() {
 std::string ASTCodeBlock::getHtml(ASTRequestFunc request) {
 	std::string html = "<pre><code";
 	html += commands.constructHeader(request);
-	html += ">\n";
+	html += ">";
 	html += _ASTBlockElement::getHtml(request);
 	html += "</code></pre>";
 	return html;

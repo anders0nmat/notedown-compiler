@@ -31,10 +31,12 @@ protected:
 		if (indentLevel == 0)
 			indentLevel = lex->lastInt;
 
-		if (lex->lastToken == tokSpace && indentLevel == lex->lastInt)
-			lex->gettok();
-		else
-			lex->lastInt -= indentLevel;
+		if (lex->lastToken == tokSpace) {
+			if (indentLevel == lex->lastInt)
+				lex->gettok();
+			else
+				lex->lastInt -= indentLevel;
+		}
 
 		std::unique_ptr<_ASTElement> e;
 		bool redo;
@@ -340,5 +342,13 @@ class InlineCommandHandler : public InlineHandler {
 protected:
 
 public:
+	InlineCommandHandler() {}
 
+	std::unique_ptr<InlineHandler> createNew() override;
+
+	std::string triggerChars() override;
+
+	bool canHandle(Parser * lex) override;
+
+	std::tuple<std::unique_ptr<_ASTInlineElement>, bool> handle(Parser * lex) override;
 };

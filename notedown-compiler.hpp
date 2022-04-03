@@ -31,9 +31,12 @@ protected:
 	std::vector<std::unique_ptr<InlineHandler>> inlineHandlerList;
 
 	std::unordered_map<std::string, _ASTElement *> iddef;
-	std::unordered_map<std::string, std::function<void(_ASTElement *, std::vector<std::string>)>> funcs;
+	std::unordered_map<std::string, ASTModFunc> modFuncs;
 
 	std::unordered_set<int> symbols;
+
+	std::unordered_map<std::string, std::string> emojis;
+	ASTPlainText temp_emoji;
 
 	std::stringbuf buf;
 	
@@ -44,7 +47,7 @@ protected:
 	void getIdDef();
 
 	_ASTElement * handleRequest(std::string request);
-
+	ASTModFunc handleModRequest(std::string request);
 public:
 	
 	NotedownCompiler() {}
@@ -95,20 +98,37 @@ public:
 	 */
 	bool addInlineHandler(std::string name, std::unique_ptr<InlineHandler> handler);
 
-	/*
-		Registers an alternative name
-		@param alias A unique alias for identifing
-		@param name The name the alias is for
-		@return Success, if alias is unique
-	*/
+	/**
+	 * Registers an alternative name
+	 * @param alias A unique alias for identifing
+	 * @param name The name the alias is for
+	 * @return Success, if alias is unique
+	 */
 	bool addInlineHandlerAlias(std::string alias, std::string name);
 
 	/**
 	 * Default handlers are all handlers needed to support defined features
 
-	 * See doc/syntax-elements.md
+	 * See docs/syntax-elements.md
 	 */
 	void addDefaultHandlers();
+
+	/**
+	 * Adds an lookup table for emoji shortcodes
+	 */
+	void addEmojiLUT(std::string filename);
+
+	/**
+	 * Adds a modifying function to use in command blocks
+	 */
+	void addModifierFunc(std::string name, ASTModFunc func);
+	void addModifierFunc(std::string name, std::function<void(NotedownCompiler *, _ASTElement *, ASTProcess, std::vector<std::string> &)> func);
+
+	/**
+	 * Adds a generating function to use in command blocks
+	 */
+	void addGeneratorFunc(std::string name, ASTModFunc func);
+	void addGeneratorFunc(std::string name, std::function<void(NotedownCompiler *, _ASTElement *, ASTProcess, std::vector<std::string> &)> func);
 
 	/**
 	 * Parse filename and add created document to list of documents
@@ -121,6 +141,7 @@ public:
 	 * @param multithread Whether each file should be parsed with a separate thread (can speed up compilation)
 	 */
 	void addFile(std::initializer_list<std::string> filenames, bool multithread = true);
+	void addFile(std::vector<std::string> & filenames, bool multithread = true);
 
 	void prepareAST();
 
@@ -142,6 +163,8 @@ public:
 	 * @return Reference to pointer of ASTDocument
 	 */
 	std::unique_ptr<ASTDocument> & getDocument(size_t index);
+
+	size_t documentCount();
 };
 
 namespace Notedown {

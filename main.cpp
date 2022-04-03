@@ -74,29 +74,130 @@
 	I_italic : Prints text of Syntax "/" <Text> "/" as italic text
 */
 
+std::string fmtNow(const char * fmt) {
+	static char buf[256];
+	time_t t;
+	struct tm * timeinfo;
+
+	time(&t);
+	timeinfo = localtime(&t);
+	strftime(buf, 256, fmt, timeinfo);
+	return buf;
+}
+
+std::string fmtNow() {
+	return fmtNow("%c");
+}
+
+std::unique_ptr<ASTUnorderedList> tocLevel(std::vector<ASTHeading *> & outline, size_t & index) {
+	int level = outline[index]->level;
+	std::unique_ptr<ASTUnorderedList> list = std::make_unique<ASTUnorderedList>();
+	while (index < outline.size() && outline[index]->level >= level) {
+		if (outline[index]->level == level) {
+			// New Entry
+			std::string name = outline[index]->content->literalText();
+			std::string id = outline[index]->commands.id;
+			std::unique_ptr<ASTListElement> elem = std::make_unique<ASTListElement>();
+			std::unique_ptr<ASTInlineText> text = std::make_unique<ASTInlineText>();
+			text->addElement(std::make_unique<ASTPlainText>(name));
+			elem->addElement(std::make_unique<ASTHeadingLink>(id, text));
+			list->addElement(elem);
+			index++;
+		}
+		else {
+			std::unique_ptr<_ASTElement> elem = std::move(tocLevel(outline, index));
+			list->back()->addElement(elem);
+		}
+	}
+	return std::move(list);
+}
+
 int main(int argc, char *argv[]) {
 	NotedownCompiler compiler;
+	compiler.addEmojiLUT("emoji_lut/emojis");
 	compiler.addDefaultHandlers();
-	compiler.addFile({ "example.nd", "example2.nd" });
+
+	compiler.addGeneratorFunc("now", [](_ASTElement * e, ASTProcess step, std::vector<std::string> & args) {
+		if (step != procExecuteMain) return;
+		ASTCommandContainer * container = dynamic_cast<ASTCommandContainer *>(e);
+		if (container == nullptr) return;
+
+		std::string str;
+		if (args.size() > 0)
+			str = fmtNow(args[0].c_str());
+		else
+			str = fmtNow();
+
+		container->setContent(std::make_unique<ASTPlainText>(str));
+	});
+
+	compiler.addModifierFunc("notoc", [](_ASTElement * e, ASTProcess step, std::vector<std::string> & args) {
+		if (step != procExecutePrep) return;
+		ASTHeading * container = dynamic_cast<ASTHeading *>(e);
+		if (container == nullptr) return;
+
+		container->commands.flags["notoc"] = "true";
+	});
+
+	compiler.addGeneratorFunc("inserttoc", [](NotedownCompiler * comp, _ASTElement * e, ASTProcess step, std::vector<std::string> & args) {
+		if (step != procExecuteMain) return;
+		ASTCommandContainer * container = dynamic_cast<ASTCommandContainer *>(e);
+		if (container == nullptr) return;
+
+		// Go through all headings on main Level and collect all relevant headings
+		std::vector<ASTHeading *> outline;
+
+		for (size_t index = 0; index < comp->documentCount(); index++) {
+			std::unique_ptr<ASTDocument> & doc = comp->getDocument(index);
+			for (auto & e : doc->elements) {
+				ASTHeading * h = dynamic_cast<ASTHeading *>(e.get());
+				if (h != nullptr && !h->isEmpty() && h->commands.flags["notoc"] != "true")
+					outline.push_back(h);
+			}
+		}
+		if (outline.empty()) return;
+
+		std::unique_ptr<ASTUnorderedList> list = std::make_unique<ASTUnorderedList>();
+
+		int currLevel;
+		size_t index = 0;
+
+		while (index < outline.size()) {
+			currLevel = outline[index]->level;
+			std::unique_ptr<ASTUnorderedList> l = tocLevel(outline, index);
+			list->addElements(l->elements);
+		}
+
+		container->setContent(std::move(list));
+	});
+
+	compiler.addModifierFunc("usenum", [](_ASTElement * e, ASTProcess step, std::vector<std::string> & args) {
+		if (step != procExecuteMain) return;
+		ASTListElement * container = dynamic_cast<ASTListElement *>(e->parent);
+		if (container == nullptr) return;
+
+		unsigned long num = container->index;
+		if (args.size() > 0)
+			if (isdigit(args[0][0]))
+				num = std::stoul(args[0]);
+		
+		container->commands.attributes["value"] = std::to_string(num);
+	});
+
+
+	compiler.addFile("example.nd");
 	compiler.prepareAST();
 
-	// std::ofstream json("AST.json");
-	// json << compiler.getDocument(0)->toJson();
-	// json.close();
 
 	std::ofstream html("example.html");
 	
-	// html << "<!DOCTYPE html>\n";
-	// html << "<html>\n";
-	// html << "<head>\n";
-	// html << "<meta charset=\"utf-8\">\n";
-	// html << "</head>\n";
-	// html << "<body>\n";
+	html << "<!DOCTYPE html>\n" << "<html>\n" << "<head>\n";
+	html << "<meta charset=\"utf-8\">\n";
+	html << "<link rel=\"stylesheet\" href=\"default.css\">\n";
+	html << "</head>\n" << "<body>\n";
 	html << compiler.getRawHtml();
-	// html << "</body>\n";
-	// html << "</html>\n";
+	html << "</body>\n" << "</html>\n";
 	html.close();
 	
-
 	return 0;
 }

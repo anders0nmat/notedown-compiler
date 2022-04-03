@@ -29,6 +29,8 @@ void NotedownCompiler::addDefaultHandlers() {
 
 	addInlineHandler<InlineModifierHandler>("I_link");
 
+	addInlineHandler<InlineCommandHandler>("I_command");
+
 
 	addHandler<ParagraphHandler>("H_paragraph");
 	addHandlerAlias("H_default", "H_paragraph");
@@ -185,7 +187,7 @@ std::tuple<std::unique_ptr<_ASTElement>, bool> BlockquoteHandler::handle(Parser 
 		centered = lex->lastInt > 1;
 	}
 
-	if (lex->lastToken == tokSpace) {
+	if (lex->lastToken == tokSpace || lex->lastToken == tokNewline) {
 		// Indent Block
 		handleBlock(lex);
 	}
@@ -241,7 +243,7 @@ std::tuple<std::unique_ptr<_ASTElement>, bool> UnorderedListHandler::handle(Pars
 		list = std::make_unique<ASTUnorderedList>();
 	}
 
-	if (lex->lastToken == tokSpace) {
+	if (lex->lastToken == tokSpace || lex->lastToken == tokNewline) {
 		// Indent Block
 		handleBlock(lex);
 	}
@@ -292,7 +294,7 @@ std::string OrderedListHandler::triggerChars() {
 bool OrderedListHandler::canHandle(Parser * lex) {
 	return canHandleBlock(lex) ||
 		((lex->lastToken == tokNumber) &&
-		(lex->lastString[lex->lastString.length()] == '.') &&
+		(lex->lastString[lex->lastString.length() - 1] == '.') &&
 		(lex->peektok() == tokSpace || lex->peektok() == tokNewline));
 }
 
@@ -302,7 +304,7 @@ std::tuple<std::unique_ptr<_ASTElement>, bool> OrderedListHandler::handle(Parser
 		list = std::make_unique<ASTOrderedList>();
 	}
 
-	if (lex->lastToken == tokSpace) {
+	if (lex->lastToken == tokSpace || lex->lastToken == tokNewline) {
 		// Indent Block
 		handleBlock(lex);
 	}
@@ -920,8 +922,9 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineModifierHandler::hand
 				return std::make_tuple(std::move(content), true);
 			}
 			lex->gettok(1);
+			result = std::make_unique<ASTStyled>(keyword, content);
 			result->addCommand(ASTCommand(command));
-			return std::make_tuple(std::move(content), true);
+			return std::make_tuple(std::move(result), true);
 		default:
 			// Error, not valid
 			break;
@@ -974,4 +977,49 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineSmileyHandler::handle
 	content->prependElement(std::make_unique<ASTPlainText>(':'));
 
 	return std::make_tuple(std::move(content), true);
+}
+
+// ----- InlineCommandHandler ----- //
+
+std::unique_ptr<InlineHandler> InlineCommandHandler::createNew() {
+	return std::make_unique<InlineCommandHandler>();
+}
+
+std::string InlineCommandHandler::triggerChars() {
+	return "{}";
+}
+
+bool InlineCommandHandler::canHandle(Parser * lex) {
+	return (lex->lastToken == tokSym) &&
+		(lex->lastString[0] == '{') &&
+		(lex->peektok() != tokSpace) &&
+		(lex->peektok() != tokNewline) &&
+		(lex->peektok() != tokEOF);
+}
+
+std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineCommandHandler::handle(Parser * lex) {
+	lex->gettok(); // Consume {
+
+	std::string command;
+	bool success, inQuote;
+
+	// Read Command line literally
+	std::tie(command, success) = lex->readUntil([&inQuote](Parser * lex) {
+		if (lex->lastToken == tokSym && lex->lastString[0] == '"') {
+			inQuote = !inQuote;
+		}
+		return (!inQuote && lex->lastToken == tokSym && lex->lastString[0] == '}');
+	});
+	if (!success) {
+		std::unique_ptr<ASTInlineText> content = std::make_unique<ASTInlineText>();
+		
+		// No closing bracket, surround read content with "[content]{command"
+		content->addElement(std::make_unique<ASTPlainText>('{'));
+		content->addElement(std::make_unique<ASTPlainText>(command));
+		return std::make_tuple(std::move(content), true);
+	}
+	lex->gettok(1); // Consume closing char
+	std::unique_ptr<ASTCommandContainer> result = std::make_unique<ASTCommandContainer>();
+	result->addCommand(ASTCommand(command));
+	return std::make_tuple(std::move(result), true);
 }

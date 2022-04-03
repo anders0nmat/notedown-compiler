@@ -1,3 +1,122 @@
 
+# Notedown - The full picture {&notoc}
 
-Here is Text from another [file]<%file>
+Notedown is a extended (but not fully compatible) version of Markdown
+with quite some features to shine with, explored in the following chapters.
+
+{$inserttoc}
+
+## The story that is Inline styling
+
+One can inline style elements with default *bold*, /italic/, _underline_ 
+and ~strikethrough~ methods, but also mark =important= Text.
+These styling options are all combinable to create */bold italic/* or =_marked underlined_= text.
+Actually _~Very Wrong~_ Text might not work.
+
+### Special Code styling
+
+Although it could be deemed the same, inline code styling is quite unique.
+`int definition(int number)` returns the definiton of the given `number`
+
+## Dilemmas in Life
+
+Lets say you want to insert a line with a `#` at the beginning, but don't want to create a headline
+What are you supposed to do?  
+Easy, precede your `#` with a backslash:
+
+\# No Headline
+
+## Quoting - the right way
+
+When one quotes a big person, there needs to be given credit
+
+>> {+author="Albert Einstein"}
+>>
+>> Faith is the power to resist facts
+
+Sometimes annotations are useful
+
+> Blue is not a fruit  
+  But sometimes tastes sour
+
+  > You dont say. Not like it grows on trees
+
+## The organized one uses lists
+
+A list of events is never a bad idea:
+
+- Bread was bought
+- Bread was packaged
+- Bread was cut
+  - Bread was cut to thin
+  - The mistake was covered
+- Bread was toasted
+  1. Adjust the toaster to setting 4
+  2. Insert the Bread
+  1. Activate the toaster
+  5 minutes of waiting
+- Bread was eaten
+
+## Change in topic
+
+Here, everyone wonders where a line should be drawn
+---
+Here, the line is already drawn
+
+## Codeblocks
+
+Here is a little code:
+
+```py text
+def main(args):
+	if (__name__ == "__main__")
+		print(args[0])
+	i += args[1]
+	return i
+```
+
+One can specify a language, although it does not do much at the moment.
+
+## Links are important
+
+Sometimes one wants to make someones life easier by directly linking to the [wikipedia Page](wikipedia.org :"The encyclopedia of the world").
+Sometimes, this is a waste of [space](%waste). Then one can define the link later.
+
+%(space): wikipedia.org :"The web library"
+
+A cute cat can also be shown: [Naww]!(%cat :"Cute cat")
+
+%(cat): https://upload.wikimedia.org/wikipedia/commons/thumb/b/bb/Kittyply_edit1.jpg/1280px-Kittyply_edit1.jpg :Cat!
+
+Links to earlier Headings are also possible. See [links are important]#.
+
+Footnotes will also be possible[1]^(one) but are not at the moment.
+
+## The wonderful world of emoji
+
+Currently i am too lazy to add more, so there are only some that i use frequently :+1:
+
+## Informations
+
+If you describe a (code) library, you may want to give additional information, warning or error-messages.
+
+>:i:> Also see [inline styling](#the-story-that-is-inline-styling)
+
+There can also be some errors in here
+
+>:error:> If 2 > 4, something bad will happen
+  
+  See [google](google.com)
+
+Warnings should also be possible by default
+
+>warn> Please stay within the speed limit
+  >i> blue in yellow?
+
+## Endless possibilities
+
+[Lets define this paragraph later]<%later>
+
+You can also style parts of text [differently]{>text-shadow:"2px 2px #7f7f7f7f"}
+
+%<later>: This is a later defined paragraph
