@@ -227,6 +227,40 @@ public:
 	std::unique_ptr<_ASTElement> finish(Parser * lex) override;
 };
 
+class FootnoteHandler : public BlockHandler<ASTFootnoteBlock> {
+public:
+	FootnoteHandler() {}
+
+	std::unique_ptr<ParserHandler> createNew() override;
+
+	std::string triggerChars() override;
+
+	bool canHandle(Parser * lex) override;
+
+	std::tuple<std::unique_ptr<_ASTElement>, bool> handle(Parser * lex) override;
+
+	std::unique_ptr<_ASTElement> finish(Parser * lex) override;
+};
+
+class CollapseHandler : public BlockHandler<ASTCollapseBlock> {
+protected:
+	// std::unique_ptr<ASTCollapseBlock> content;
+	// std::unique_ptr<ParserHandler> handler;
+public:
+
+	CollapseHandler() {}
+
+	std::unique_ptr<ParserHandler> createNew() override;
+	
+	std::string triggerChars() override;
+
+	bool canHandle(Parser * lex) override;
+
+	std::tuple<std::unique_ptr<_ASTElement>, bool> handle(Parser * lex) override;
+
+	std::unique_ptr<_ASTElement> finish(Parser * lex) override;
+};
+
 
 // ------------------------------------- //
 // ---------- Inline Handlers ---------- //

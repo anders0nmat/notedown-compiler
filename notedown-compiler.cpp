@@ -47,7 +47,7 @@ namespace Notedown {
 					id += e;
 
 				// Space convert
-				if (e == ' ')
+				if (e == ' ' && id.back() != '-')
 					id += '-';
 			}
 		}
@@ -174,25 +174,31 @@ void NotedownCompiler::prepareAST() {
 	for (auto & e : documents) {
 		e->process(procRegister, 
 			std::bind(&NotedownCompiler::handleRequest, this, std::placeholders::_1), 
-			std::bind(&NotedownCompiler::handleModRequest, this, std::placeholders::_1));	
+			std::bind(&NotedownCompiler::handleModRequest, this, std::placeholders::_1));
+		for (auto & p : e->iddef)
+			iddef[p.first] = p.second;	
 	}
 	
 	for (auto & e : documents) {
 		e->process(procResolve, 
 			std::bind(&NotedownCompiler::handleRequest, this, std::placeholders::_1), 
 			std::bind(&NotedownCompiler::handleModRequest, this, std::placeholders::_1));
+		for (auto & p : e->iddef)
+			iddef[p.first] = p.second;
 	}
 
 	for (auto & e : documents) {
 		e->process(procConsume, 
 			std::bind(&NotedownCompiler::handleRequest, this, std::placeholders::_1), 
 			std::bind(&NotedownCompiler::handleModRequest, this, std::placeholders::_1));
+		for (auto & p : e->iddef)
+			iddef[p.first] = p.second;
 	}
 
 	// Consume all registered components
-	for (auto & e : documents)
-		for (auto & p : e->iddef)
-			iddef[p.first] = p.second;
+	// for (auto & e : documents)
+	// 	for (auto & p : e->iddef)
+	// 		iddef[p.first] = p.second;
 
 	for (auto & e : documents) {
 		e->process(procExecutePrep, 

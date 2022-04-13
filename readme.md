@@ -43,10 +43,12 @@ Notedown is a Quick-HTML-Language heavily inspired by Markdown. It extends on th
 - [x] Enable multithreading
 - [x] Allow for multiple files to be combined into one
 - [x] Add HTML Parsing for AST
-- [ ] Add Command Function Registering and Handling
-- [ ] Add html featureset e.g. template files, adding file includes (for css and javascript)
-- [ ] Add Command upchaining for AST
-- [ ] Add HTML Header building for AST
+- [x] Add Command Function Registering and Handling
+- [ ] Add html featureset e.g. template files, adding file includes (for css and javascript)  
+	*Task of compiler, not notedown object*
+- [x] Add Command upchaining for AST
+- [ ] Add HTML Header building for AST  
+	*Task of compiler, not notedown object*
 
 ## Featureset
 

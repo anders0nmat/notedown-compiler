@@ -60,6 +60,7 @@ Token Parser::gettok() {
 					_lastChar = input->get(); // now contains n
 					_lastChar = '\n';
 					break;
+				case '.':
 				case '\\': // Consume and treat as normal text
 					_lastChar = input->get();
 				default: break;

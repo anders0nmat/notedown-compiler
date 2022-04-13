@@ -1,4 +1,5 @@
-:root {
+:root,
+.vscode-light {
 	--text: #000000;
 	--text-hl: #000000;
 	--text-link: #0077ff;
@@ -18,6 +19,28 @@
 	--bg-i-quote: #0026ff24;
 	--bg-w-quote: #ffdd0024;
 	--bg-e-quote: #ff000024;
+}
+
+.vscode-dark {
+	--text: #bfbfbf;
+	--text-hl: #afafaf;
+	--text-link: #3d8be6;
+	--text-visited: #a069df;
+	--missing: #f84747;
+
+	--hr-color: #7f7f7f2f;
+	--border-quote: #7f7f7f1a;
+	--border-i-quote: #338bff80;
+	--border-w-quote: #ffdd0080;
+	--border-e-quote: #ff000080;
+
+	--bg: #1e1e1e;
+	--bg-quote: #7f7f7f10;
+	--bg-mark: #33310a;
+	--bg-code: #8080801f;
+	--bg-i-quote: #006eff24;
+	--bg-w-quote: #ffdd000f;
+	--bg-e-quote: #ff000016;
 }
 
 @media screen and (prefers-color-scheme: dark) {
@@ -56,11 +79,12 @@ body {
 	max-width: 1000px;
 	overflow-x: hidden;
 	margin-inline: auto;
-	margin-bottom: 1em;
-	margin-top: 0;
+	margin-block: 32px;
+	/* margin-top: 0; */
 	color: var(--text);
 	font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 	background-color: var(--bg);
+	line-height: 1.5em;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -104,6 +128,7 @@ mark {
 	background-color: var(--bg-mark);
 	border-radius: 4px;
 	padding-inline: 0.4em;
+	padding-block: 0.1em;
 	color:inherit;
 }
 
@@ -113,7 +138,6 @@ code {
 	background-color: var(--bg-code);
 	border-radius: 4px;
 	padding-inline: 0.4em;
-	padding-block: 0.2rem;
 	display: inline-block;
 }
 
@@ -129,6 +153,7 @@ blockquote {
 	margin: 1em 0;
 	padding: 0.5em 1.5em;
 	position: relative;
+	border-radius: 4px;
 }
 
 blockquote.center {
@@ -190,12 +215,7 @@ li {
 	margin-top: 0.5em;
 }
 
-blockquote.sym.i,
-blockquote.sym.info,
-blockquote.sym.w,
-blockquote.sym.warn,
-blockquote.sym.e,
-blockquote.sym.error {
+blockquote.sym {
 	padding-left: 2.5em;
 }
 
@@ -217,30 +237,44 @@ blockquote.error {
 	border-left-color: var(--border-e-quote);
 }
 
-blockquote.sym.i > *:first-child,
-blockquote.sym.info > *:first-child,
-blockquote.sym.w > *:first-child,
-blockquote.sym.warn > *:first-child,
-blockquote.sym.e > *:first-child,
-blockquote.sym.error > *:first-child {
+blockquote.sym > *:first-child {
 	display: list-item;
+}
+
+blockquote.sym > *:first-child::marker {
+	font-size: 1.2rem;
 }
 
 blockquote.i.sym > *:first-child::marker,
 blockquote.info.sym > *:first-child::marker {
 	content: "ℹ️ ";
-	font-size: 1.2rem;
 }
 
 blockquote.w.sym > *:first-child::marker,
 blockquote.warn.sym > *:first-child::marker {
 	content: "⚠️ ";
-	font-size: 1.2rem;
-	margin-right: 1em;
 }
 
 blockquote.e.sym > *:first-child::marker,
 blockquote.error.sym > *:first-child::marker {
 	content: "❌ ";
-	font-size: 1.2rem;
+}
+
+details {
+	padding-block: 0.25em;
+	display: block;
+	padding-left: 1em;
+}
+
+details > summary {
+	cursor:pointer;
+	margin-left: -1em;
+}
+
+details[open] > summary {
+	margin-bottom: 1em;
+}
+
+details > summary * {
+	display: inline-block;
 }

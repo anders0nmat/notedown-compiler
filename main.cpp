@@ -108,9 +108,95 @@ std::unique_ptr<ASTUnorderedList> tocLevel(std::vector<ASTHeading *> & outline, 
 	return std::move(list);
 }
 
+const std::string COMPILER_VERSION = "v1.2";
+const std::string CONSOLE_HELP = 
+"Notedown Compiler " + COMPILER_VERSION + "\n"
+"\t-?\n"
+"\t-h\n"
+"\t-help\t: Prints this help\n"
+"\t-nom\n"
+"\t-nomultithread\t: Disables the multithread compiling of files\n"
+"\t-sd\n"
+"\t-styledoc\n"
+"\t-styledocument\t: Include styling in html instead of reflinks\n" 
+"\t-o\n"
+"\t-out\t: Defines the output file\n"
+"\t-s\n"
+"\t-style\t: Defines css style sheets to use\n"
+// "\t-nod\n"
+// "\t-nodefault\t: Disable default css and emoji LUT\n"
+
+;
+
+std::vector<std::string> files, styles;
+std::unordered_map<std::string, std::string> args;
+std::string ofile;
+
+bool flagSet(std::string str) {
+	return args.count(str) > 0;
+}
+
+bool flagSet(std::initializer_list<std::string> strs) {
+	for (auto & s : strs)
+		if (args.count(s) > 0)
+			return true;
+	return false;
+}
+
 int main(int argc, char *argv[]) {
+	bool ignoreNext;
+	for (int i = 1; i < argc; i++) {
+		if (ignoreNext){
+			ignoreNext = false;
+			continue;
+		}
+		std::string arg = argv[i];
+		
+
+		if (arg == "-style" || arg == "-s") {
+			if (i + 1 < argc) {
+				styles.push_back(argv[i + 1]);
+				ignoreNext = true;
+			}
+			continue;
+		}
+
+		if (arg == "-out" || arg == "-o") {
+			if (i + 1 < argc) {
+				ofile = argv[i + 1];
+				ignoreNext = true;
+			}
+			continue;
+		}
+
+
+		if (arg[0] == '-') {
+			args[arg] = "";
+			continue;
+		}
+
+		files.push_back(arg);
+	}
+
+	if (files.empty())
+		args["-?"] = "";
+
+
+	// Print Help
+	if (flagSet({ "-?", "-h", "-help" })) {
+		std::cout << CONSOLE_HELP << std::endl;
+		return 0;
+	}
+
+	if (ofile.empty()) {
+		std::string filename = files[0].substr(0, files[0].find_last_of('.'));
+		ofile = filename + ".html";
+	}
+
+
+
 	NotedownCompiler compiler;
-	compiler.addEmojiLUT({ 
+	compiler.addEmojiLUT({
 		"emoji_lut/unicode-14/activities",
 		"emoji_lut/unicode-14/animals-nature",
 		"emoji_lut/unicode-14/flags",
@@ -191,15 +277,30 @@ int main(int argc, char *argv[]) {
 	});
 
 
-	compiler.addFile("example.nd");
+	compiler.addFile(files, !flagSet({ "-nomultithread", "-nom" }));
 	compiler.prepareAST();
 
 
-	std::ofstream html("example.html");
+	std::ofstream html(ofile);
 	
 	html << "<!DOCTYPE html>\n" << "<html>\n" << "<head>\n";
 	html << "<meta charset=\"utf-8\">\n";
-	html << "<link rel=\"stylesheet\" href=\"default.css\">\n";
+
+	for (auto & style : styles) {
+		if (flagSet({ "-sd", "-styledoc", "-styledocument" })) {
+			std::ifstream css(style);
+			html << "<!-- " << style << " -->\n";
+			html << "<style>\n";
+			html << css.rdbuf();
+			html << "</style>\n";
+
+		}
+		else {
+			html << "<!-- " << style << " -->\n";
+			html << "<link rel=\"stylesheet\" href=\"" << style << "\">\n";
+		}
+	}
+
 	html << "</head>\n" << "<body>\n";
 	html << compiler.getRawHtml();
 	html << "</body>\n" << "</html>\n";

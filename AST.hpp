@@ -138,7 +138,7 @@ class _ASTListElement : virtual public _ASTElement {
 protected:
 	std::string className() {return "_ASTListElement";}
 
-	void _consume(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
+	void _consume(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) override {
 		for (auto & e : elements) {
 			if (e->isEmpty())
 				commands.integrate(e->commands);
@@ -660,6 +660,42 @@ public:
 
 	ASTInfoBlock() {}
 	ASTInfoBlock(std::string type, bool sym = false) : type(type), sym(sym) {}
+
+	std::string toJson() override;
+
+	std::string getHtml(ASTRequestFunc request) override;
+};
+
+/*
+	Represents footnote definition
+*/
+class ASTFootnoteBlock : public _ASTBlockElement {
+protected:
+	std::string className() {return "ASTFootnoteBlock";}
+
+	
+	void _register(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) override;
+public:
+	std::string id;
+
+	ASTFootnoteBlock(std::string id) : id(id) {}
+
+	std::string toJson() override;
+
+	std::string getHtml(ASTRequestFunc request) override;
+};
+
+/*
+	Contains a collapsible section
+*/
+class ASTCollapseBlock : public _ASTBlockElement {
+protected:
+	std::string className() {return "ASTCollapseBlock";}
+public:
+	std::unique_ptr<ASTInlineText> summary;
+	bool isOpen;
+
+	ASTCollapseBlock() {}
 
 	std::string toJson() override;
 

@@ -16,6 +16,8 @@ void NotedownCompiler::addDefaultHandlers() {
 	addHandler<HLineHandler>("H_hline");
 	addHandler<CodeHandler>("H_code");
 	addHandler<IdDefinitionHandler>("H_iddef");
+	addHandler<FootnoteHandler>("H_footnote");
+	addHandler<CollapseHandler>("H_collapse");
 
 	addInlineHandler<InlineTemplateHandler<'*'>>("I_bold");
 	addInlineHandler<InlineTemplateHandler<'/'>>("I_italic");
@@ -678,6 +680,120 @@ std::tuple<std::unique_ptr<_ASTElement>, bool> IdDefinitionHandler::handle(Parse
 }
 
 std::unique_ptr<_ASTElement> IdDefinitionHandler::finish(Parser * lex) {
+	finishBlock(lex);
+	return std::move(content);
+}
+
+// ----- FootnoteHandler ----- //
+
+std::unique_ptr<ParserHandler> FootnoteHandler::createNew() {
+	return std::make_unique<FootnoteHandler>();
+}
+
+std::string FootnoteHandler::triggerChars() {
+	return "^:";
+}
+
+bool FootnoteHandler::canHandle(Parser * lex) {
+	if (content != nullptr)
+		return canHandleBlock(lex);
+	return 
+		(lex->lastToken == tokSym) &&
+		(lex->lastInt == 1) &&
+		(lex->lastString[0] == '^') &&
+		(
+			(lex->peektok() == tokText) ||
+			(lex->peektok() == tokNumber)
+		);
+}
+
+std::tuple<std::unique_ptr<_ASTElement>, bool> FootnoteHandler::handle(Parser * lex) {
+	if (content == nullptr) {
+		lex->gettok(); // Consume ^
+		std::string id;
+		bool succ;
+		std::tie(id, succ) = lex->readUntil([](Parser * lex) {
+			return (lex->lastToken == tokSym) &&
+				(lex->lastInt == 1) &&
+				(lex->lastString[0] == ':') &&
+				(lex->peektok() == tokSpace);
+		});
+		if (!succ) {
+			std::unique_ptr<ASTInlineText> t = std::make_unique<ASTInlineText>();
+			t->addElement(std::make_unique<ASTPlainText>("^" + id));
+			return std::make_tuple(std::move(t), true);
+		}
+		lex->gettok(); // Consume :
+		lex->gettok(); // Consume spaces
+		content = std::make_unique<ASTFootnoteBlock>(Notedown::makeId(id));
+		bool redo;
+		std::unique_ptr<_ASTElement> e;
+		do {
+			std::tie(e, redo) = lex->parseLine(handler);
+			content->addElement(e);
+		} while (redo);
+		return std::make_tuple(nullptr, false);
+	}	
+	handleBlock(lex);
+	return std::make_tuple(nullptr, false);
+}
+
+std::unique_ptr<_ASTElement> FootnoteHandler::finish(Parser * lex) {
+	finishBlock(lex);
+	return std::move(content);
+}
+
+// ----- CollapseHandler ----- //
+
+std::unique_ptr<ParserHandler> CollapseHandler::createNew() {
+	return std::make_unique<CollapseHandler>();
+}
+	
+std::string CollapseHandler::triggerChars() {
+	return "+-";
+}
+
+bool CollapseHandler::canHandle(Parser * lex) {
+	if (content != nullptr)
+		return canHandleBlock(lex);
+
+	return 
+		(lex->lastToken == tokSym) &&
+		(lex->lastInt <= 2) &&
+		(lex->lastString[0] == '+') &&
+		(lex->peektok() == tokSym) &&
+		(lex->currchar() == '-')
+	;
+}
+
+std::tuple<std::unique_ptr<_ASTElement>, bool> CollapseHandler::handle(Parser * lex) {
+	if (content == nullptr) {
+		content = std::make_unique<ASTCollapseBlock>();
+		bool isOpen = lex->lastInt == 2;
+		lex->gettok(); // Consume +
+
+		if (lex->lastToken != tokSym || lex->lastString[0] != '-' || lex->lastInt != 1 + !isOpen || (lex->peektok() != tokSpace && lex->peektok() != tokNewline)) {
+			// error
+			std::unique_ptr<ASTInlineText> e = std::make_unique<ASTInlineText>();
+			e->addElement(std::make_unique<ASTPlainText>(1 + isOpen, '+'));
+			std::tie(content->summary, std::ignore) = lex->parseText(false);
+			lex->gettok(); // Consume newline
+			return std::make_tuple(std::move(e), true);
+		}
+		lex->gettok(); // Consume -
+
+		std::tie(content->summary, std::ignore) = lex->parseText(false);
+		lex->gettok(); // Consume newline
+		content->isOpen = isOpen;
+		return std::make_tuple(nullptr, false);
+	}
+
+	handleBlock(lex);
+	
+	return std::make_tuple(nullptr, false);
+}
+
+std::unique_ptr<_ASTElement> CollapseHandler::finish(Parser * lex) {
 	finishBlock(lex);
 	return std::move(content);
 }

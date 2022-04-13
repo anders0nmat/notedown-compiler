@@ -635,7 +635,7 @@ std::string ASTEmoji::getHtml(ASTRequestFunc request) {
 // ----- ASTModifier ----- //
 
 bool ASTModifier::isEmpty() {
-	return content->isEmpty();
+	return content->isEmpty() && url.empty();
 }
 
 std::string ASTModifier::literalText() {
@@ -659,7 +659,10 @@ std::string ASTModifier::toJson() {
 
 void ASTLink::_resolve(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
 	if (url[0] == '%') {
-		ASTIdDefinition * def = dynamic_cast<ASTIdDefinition *>(request("(" + url.substr(1)));
+		std::string id = Notedown::makeId(url.substr(1));
+		if (id.empty() && !content->isEmpty())
+			id = Notedown::makeId(content->literalText());
+		ASTIdDefinition * def = dynamic_cast<ASTIdDefinition *>(request("(" + id));
 		if (def != nullptr) {
 			url = def->url;
 			commands.integrate(def->commands);
@@ -674,7 +677,10 @@ std::string ASTLink::getHtml(ASTRequestFunc request) {
 	commands.attributes["href"] = url;
 	html += commands.constructHeader(request);
 	html += ">";
-	html += content->getHtml(request);
+	if (content->isEmpty())
+		html += url;
+	else
+		html += content->getHtml(request);
 	html += "</a>";
 	return html;
 }
@@ -687,7 +693,10 @@ bool ASTImage::isEmpty() {
 
 void ASTImage::_resolve(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
 	if (url[0] == '%') {
-		ASTIdDefinition * def = dynamic_cast<ASTIdDefinition *>(request("(" + url.substr(1)));
+		std::string id = Notedown::makeId(url.substr(1));
+		if (id.empty() && !content->isEmpty())
+			id = Notedown::makeId(content->literalText());
+		ASTIdDefinition * def = dynamic_cast<ASTIdDefinition *>(request("(" + id));
 		if (def != nullptr) {
 			url = def->url;
 			commands.integrate(def->commands);
@@ -700,7 +709,10 @@ void ASTImage::_resolve(ASTProcess step, ASTRequestFunc request, ASTRequestModFu
 std::string ASTImage::getHtml(ASTRequestFunc request) {
 	std::string html = "<img";
 	commands.attributes["src"] = url;
-	commands.attributes["alt"] = content->literalText();
+	if (content->isEmpty())
+		commands.attributes["alt"] = url;
+	else
+		commands.attributes["alt"] = content->literalText();
 	html += commands.constructHeader(request);
 	html += ">";
 	return html;
@@ -710,7 +722,10 @@ std::string ASTImage::getHtml(ASTRequestFunc request) {
 
 void ASTFootnote::_resolve(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
 	if (url[0] == '%') {
-		ASTIdDefinition * def = dynamic_cast<ASTIdDefinition *>(request("(" + url.substr(1)));
+		std::string id = Notedown::makeId(url.substr(1));
+		if (id.empty() && !content->isEmpty())
+			id = Notedown::makeId(content->literalText());
+		ASTIdDefinition * def = dynamic_cast<ASTIdDefinition *>(request("(" + id));
 		if (def != nullptr) {
 			url = def->url;
 			commands.integrate(def->commands);
@@ -728,7 +743,10 @@ std::string ASTFootnote::getHtml(ASTRequestFunc request) {
 		commands.addClass("missing");
 	html += commands.constructHeader(request);
 	html += ">";
-	html += content->getHtml(request);
+	if (content->isEmpty())
+		html = url;
+	else
+		html += content->getHtml(request);
 	html += "</a>";
 	return html;
 }
@@ -1057,5 +1075,82 @@ std::string ASTInfoBlock::getHtml(ASTRequestFunc request) {
 	html += ">\n";
 	html += _ASTBlockElement::getHtml(request);
 	html += "</blockquote>";
+	return html;
+}
+
+// ----- ASTFootnoteBlock ----- //
+
+void ASTFootnoteBlock::_register(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
+	ASTDocument * doc = dynamic_cast<ASTDocument *>(getDocument());
+	if (doc == nullptr)
+		return;
+	doc->iddef["^" + id] = this;
+}
+
+std::string ASTFootnoteBlock::toJson() {
+	std::string obj = "{\"class\": \"" + className() + "\",";
+	obj += "\"id\": " + id + ",";
+	obj += "\"elements\": [";
+
+	for (auto & e : elements) {
+		obj += e->toJson() + ",";
+	}
+
+	if (elements.size() != 0)
+		obj.erase(std::prev(obj.end()));
+
+	obj += "],";
+
+	obj += cmdJson();
+	obj += "}";
+	return obj;
+}
+
+std::string ASTFootnoteBlock::getHtml(ASTRequestFunc request) {
+	std::string html = "<div";
+	commands.addClass("footnote");
+	if (!id.empty())
+		commands.id = id;
+
+	html += commands.constructHeader(request);
+	html += ">\n";
+	html += _ASTBlockElement::getHtml(request);
+	html += "</div>";
+	return html;
+}
+
+// ----- ASTCollapseBlock ----- //
+
+std::string ASTCollapseBlock::toJson() {
+	std::string obj = "{\"class\": \"" + className() + "\",";
+	obj += "\"summary\": " + summary->toJson() + ",";
+	obj += "\"elements\": [";
+
+	for (auto & e : elements) {
+		obj += e->toJson() + ",";
+	}
+
+	if (elements.size() != 0)
+		obj.erase(std::prev(obj.end()));
+
+	obj += "],";
+
+	obj += cmdJson();
+	obj += "}";
+	return obj;
+}
+
+std::string ASTCollapseBlock::getHtml(ASTRequestFunc request) {
+	std::string html = "<details";
+	if (isOpen)
+		commands.attributes["open"] = "open";
+	html += commands.constructHeader(request);
+	html += ">\n";
+	html += "<summary>";
+	if (summary != nullptr && !summary->isEmpty())
+		html += summary->getHtml(request);
+	html += "</summary>\n";
+	html += _ASTBlockElement::getHtml(request);
+	html += "</details>";
 	return html;
 }
