@@ -1,4 +1,5 @@
 /.vscode
+/test
 /AST.json
 /*.exe
 /stringUtils.hpp
