@@ -1,6 +1,7 @@
 #include <fstream>
 #include <thread>
 #include <algorithm>
+#include <iostream>
 
 #include "notedown-compiler.hpp"
 #include "lexer.hpp"
@@ -95,9 +96,11 @@ bool NotedownCompiler::addInlineHandlerAlias(std::string alias, std::string name
 
 void NotedownCompiler::addEmojiLUT(std::string filename) {
 	std::ifstream file(filename, std::ios::in);
-	if (!file.is_open())
-		throw "File could not be opened";
-	
+	if (!file.is_open()) {
+		std::cerr << "Emoji LUT could not be opened: " << filename << std::endl;
+		return;
+	}
+
 	while (!file.eof()) {
 		std::string line;
 		std::getline(file, line);
@@ -126,7 +129,7 @@ void NotedownCompiler::addEmojiLUT(std::string filename) {
 
 void NotedownCompiler::addEmojiLUT(std::vector<std::string> filenames) {
 	for (auto & e : filenames)
-		addEmojiLUT(e);
+			addEmojiLUT(e);
 }
 
 void NotedownCompiler::addSymbols(std::string str) {
@@ -141,8 +144,10 @@ void NotedownCompiler::addFile(std::string filename) {
 
 void NotedownCompiler::addFromFile(std::string filename, size_t order) {
 	std::ifstream file(filename, std::ios::in);
-	if (!file.is_open())
-		throw "File could not be opened";
+	if (!file.is_open()) {
+		std::cerr << "File could not be opened: " << filename << std::endl;
+		return;
+	}
 	
 	Parser p(this, &file);
 

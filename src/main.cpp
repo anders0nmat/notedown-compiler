@@ -129,7 +129,6 @@ const std::string CONSOLE_HELP =
 "\t-nodefaultemoji\t: Disables the default emoji LUTs\n"
 "\t-nod\n"
 "\t-nodefault\t: Disable default css and emoji LUT\n"
-
 ;
 
 std::vector<std::string> files, styles, emoji;
@@ -323,6 +322,8 @@ int main(int argc, const char *argv[]) {
 	for (auto & style : styles) {
 		if (flagSet({ "-sd", "-styledoc", "-styledocument" })) {
 			std::ifstream css(style);
+			if (!css.is_open())
+				continue;
 			html << "<!-- " << style << " -->\n";
 			html << "<style>\n";
 			html << css.rdbuf();
