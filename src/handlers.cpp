@@ -768,23 +768,28 @@ bool CollapseHandler::canHandle(Parser * lex) {
 
 std::tuple<std::unique_ptr<_ASTElement>, bool> CollapseHandler::handle(Parser * lex) {
 	if (content == nullptr) {
-		content = std::make_unique<ASTCollapseBlock>();
 		bool isOpen = lex->lastInt == 2;
 		lex->gettok(); // Consume +
 
 		if (lex->lastToken != tokSym || lex->lastString[0] != '-' || lex->lastInt != 1 + !isOpen || (lex->peektok() != tokSpace && lex->peektok() != tokNewline)) {
 			// error
-			std::unique_ptr<ASTInlineText> e = std::make_unique<ASTInlineText>();
-			e->addElement(std::make_unique<ASTPlainText>(1 + isOpen, '+'));
-			std::tie(content->summary, std::ignore) = lex->parseText(false);
+			std::unique_ptr<ASTInlineText> e;
+			std::tie(e, std::ignore) = lex->parseText(false);
+			if (e == nullptr)
+				e = std::make_unique<ASTInlineText>();
+			e->prependElement(std::make_unique<ASTPlainText>(1 + isOpen, '+'));
 			lex->gettok(); // Consume newline
 			return std::make_tuple(std::move(e), true);
 		}
 		lex->gettok(); // Consume -
 
-		std::tie(content->summary, std::ignore) = lex->parseText(false);
+		if (lex->lastToken == tokSpace)
+			lex->gettok(); // Consume Space
+
+		std::unique_ptr<ASTInlineText> e;
+		std::tie(e, std::ignore) = lex->parseText(false);
 		lex->gettok(); // Consume newline
-		content->isOpen = isOpen;
+		content = std::make_unique<ASTCollapseBlock>(isOpen, std::move(e));
 		return std::make_tuple(nullptr, false);
 	}
 

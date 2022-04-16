@@ -1048,7 +1048,10 @@ std::string ASTCodeBlock::getHtml(ASTRequestFunc request) {
 	std::string html = "<pre><code";
 	html += commands.constructHeader(request);
 	html += ">";
-	html += _ASTBlockElement::getHtml(request);
+	for (auto & e : elements)
+		html += e->getHtml(request) + "\n";
+	if (elements.size() > 0)
+		html.erase(std::prev(html.end()));
 	html += "</code></pre>";
 	return html;
 }
@@ -1129,6 +1132,11 @@ std::string ASTFootnoteBlock::getHtml(ASTRequestFunc request) {
 }
 
 // ----- ASTCollapseBlock ----- //
+
+void ASTCollapseBlock::process(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
+	summary->process(step, request, modFunc);
+	_ASTBlockElement::process(step, request, modFunc);
+}
 
 std::string ASTCollapseBlock::toJson() {
 	std::string obj = "{\"class\": \"" + className() + "\",";

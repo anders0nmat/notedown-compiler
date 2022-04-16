@@ -698,6 +698,11 @@ public:
 	bool isOpen;
 
 	ASTCollapseBlock() {}
+	ASTCollapseBlock(bool isOpen, std::unique_ptr<ASTInlineText> summary) : isOpen(isOpen), summary(std::move(summary)) {
+		this->summary->parent = this;
+	}
+
+	void process(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) override;
 
 	std::string toJson() override;
 
