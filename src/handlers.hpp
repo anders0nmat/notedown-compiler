@@ -286,15 +286,11 @@ public:
 	bool canHandle(Parser * lex) {
 		return (lex->lastToken == tokSym) &&
 			(lex->lastString[0] == indicator) &&
+			(lex->lastInt % 2 != 0) && // At least one Indicator left open, e.g. *** -> *<firstContent>**<secondContent>
 			(lex->peektok() != tokSpace) && (lex->peektok() != tokNewline);
 	}
 
 	std::tuple<std::unique_ptr<_ASTInlineElement>, bool> handle(Parser * lex) {
-		
-		// If there are no indicators left open, e.g. **** -> *<firstContent>**<secondContent>*
-		if (lex->lastInt % 2 == 0)
-			return std::make_tuple(nullptr, true);
-
 		lex->gettok(); // Consume opening indicator
 		std::unique_ptr<ASTInlineText> content;
 		bool endOfLine;

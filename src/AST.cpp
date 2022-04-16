@@ -409,6 +409,11 @@ bool _ASTElement::isEmpty() {
 	return true;
 }
 
+
+bool _ASTElement::canConsume() {
+	return isEmpty();
+}
+
 void _ASTElement::addCommand(ASTCommand && command) {
 	commands.merge(command);
 }
@@ -744,7 +749,7 @@ std::string ASTFootnote::getHtml(ASTRequestFunc request) {
 	html += commands.constructHeader(request);
 	html += ">";
 	if (content->isEmpty())
-		html = url;
+		html += url;
 	else
 		html += content->getHtml(request);
 	html += "</a>";
@@ -829,6 +834,10 @@ void ASTIdDefinition::_register(ASTProcess step, ASTRequestFunc request, ASTRequ
 
 bool ASTIdDefinition::isEmpty() {
 	return true;
+}
+
+bool ASTIdDefinition::canConsume() {
+	return false;
 }
 
 void ASTIdDefinition::registerNow() {

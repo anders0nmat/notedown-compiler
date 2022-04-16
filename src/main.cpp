@@ -111,7 +111,6 @@ std::unique_ptr<ASTUnorderedList> tocLevel(std::vector<ASTHeading *> & outline, 
 const std::string COMPILER_VERSION = "v1.2";
 const std::string DEFAULT_STYLE_PATH = "default.css";
 const std::string CONSOLE_HELP = 
-"Notedown Compiler " + COMPILER_VERSION + "\n"
 "\t-?\n"
 "\t-h\n"
 "\t-help\t: Prints this help\n"
@@ -148,7 +147,7 @@ bool flagSet(std::initializer_list<std::string> strs) {
 	return false;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, const char *argv[]) {
 	bool ignoreNext;
 	for (int i = 1; i < argc; i++) {
 		if (ignoreNext){
@@ -194,6 +193,8 @@ int main(int argc, char *argv[]) {
 	if (files.empty())
 		args["-?"] = "";
 
+	std::cout << "\nNotedown Compiler " + COMPILER_VERSION << std::endl;
+
 	// Print Help
 	if (flagSet({ "-?", "-h", "-help" })) {
 		std::cout << CONSOLE_HELP << std::endl;
@@ -216,17 +217,19 @@ int main(int argc, char *argv[]) {
 
 	if (!flagSet({"-node", "-nodefaultemoji"}))
 		emoji.insert(emoji.end(), {
-			"emoji_lut/unicode-14/activities",
-			"emoji_lut/unicode-14/animals-nature",
-			"emoji_lut/unicode-14/flags",
-			"emoji_lut/unicode-14/food-drink",
-			"emoji_lut/unicode-14/objects",
-			"emoji_lut/unicode-14/people-body",
-			"emoji_lut/unicode-14/smileys-emotion",
-			"emoji_lut/unicode-14/symbols",
-			"emoji_lut/unicode-14/travel-places"
+			"../bin/emoji_lut/unicode-14/activities",
+			"../bin/emoji_lut/unicode-14/animals-nature",
+			"../bin/emoji_lut/unicode-14/flags",
+			"../bin/emoji_lut/unicode-14/food-drink",
+			"../bin/emoji_lut/unicode-14/objects",
+			"../bin/emoji_lut/unicode-14/people-body",
+			"../bin/emoji_lut/unicode-14/smileys-emotion",
+			"../bin/emoji_lut/unicode-14/symbols",
+			"../bin/emoji_lut/unicode-14/travel-places"
 		});
 
+
+	args["-nom"] = "";
 
 
 	// ------------------------------ //
@@ -334,6 +337,8 @@ int main(int argc, char *argv[]) {
 	html << compiler.getRawHtml();
 	html << "</body>\n" << "</html>\n";
 	html.close();
+
+	std::cout << "Success!" << "\n" << "New File: " << ofile << std::endl;
 	
 	return 0;
 }

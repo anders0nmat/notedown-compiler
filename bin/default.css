@@ -85,6 +85,7 @@ body {
 	font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 	background-color: var(--bg);
 	line-height: 1.5em;
+	font-size: 16px;
 }
 
 h1, h2, h3, h4, h5, h6 {

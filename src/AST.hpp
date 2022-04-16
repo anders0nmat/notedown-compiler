@@ -123,6 +123,7 @@ public:
 	virtual std::string toJson();
 
 	virtual bool isEmpty();
+	virtual bool canConsume();
 
 	virtual void addCommand(ASTCommand && command);
 	virtual void addCommand(ASTCommand & command);
@@ -140,7 +141,7 @@ protected:
 
 	void _consume(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) override {
 		for (auto & e : elements) {
-			if (e->isEmpty())
+			if (e->canConsume())
 				commands.integrate(e->commands);
 		}
 	}
@@ -521,6 +522,7 @@ public:
 	ASTIdDefinition(std::string id, std::string url, char type) : id(id), url(url), type(type) {}
 
 	bool isEmpty() override;
+	bool canConsume() override;
 
 	void registerNow();
 

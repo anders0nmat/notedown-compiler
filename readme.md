@@ -70,11 +70,11 @@ complete - Tested and working (as expected)
 - Extended Markdown Features
   - Tables
   - Fenced Code Blocks (untested)
-  - Footnotes (70%)
+  - Footnotes (untested)
   - Heading IDs (untested)
   - Definition List
   - Task List
-  - Emoji (40%)
+  - Emoji (untested)
   - Highlight (untested)
   - Reference-Style Links (untested)
   - Syntax Highlighting

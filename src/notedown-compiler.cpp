@@ -162,7 +162,7 @@ void NotedownCompiler::addFile(std::vector<std::string> & filenames, bool multit
 		if (multithread)
 			threads.push_back(std::thread(&NotedownCompiler::addFromFile, this, e, order));
 		else
-			addFile(e);
+			addFromFile(e, order);
 		order++;
 	}
 
