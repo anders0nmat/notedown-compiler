@@ -1,0 +1,198 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Notedown",
+	"patterns": [
+		{"include": "#headline"},
+		{"include": "#styled_text"}
+	],
+	"repository": {
+		"strings": {
+			"name": "string.quoted.double.notedown",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.notedown",
+					"match": "\\\\."
+				}
+			]
+		},
+		"escaped": {
+			"name": "constant.character.escape.notedown",
+			"match": "\\\\[n.*/_~`#]"
+		},
+		"styled_text": {
+			"name": "markup.other.notedown",
+			"patterns": [
+				{"include": "#escaped"},
+				{"include": "#underlined"},
+				{"include": "#bold"},
+				{"include": "#italic"},
+				{"include": "#marked"},
+				{"include": "#strike"},
+				{"include": "#inline_command"},
+				{"include": "#inline_code"}
+			]
+		},
+
+		"underlined": {
+			"name": "markup.underline.notedown",
+			"begin": "_(?=\\S[^\\n]*_)",
+			"end": "_",
+			"patterns": [
+				{
+					"include": "#escaped"
+				},
+				{
+					"include": "#bold"
+				},
+				{
+					"include": "#italic"
+				},
+				{
+					"include": "#marked"
+				},
+				{
+					"include": "#strike"
+				}
+			]
+		},
+		"bold": {
+			"name": "markup.bold.notedown",
+			"begin": "\\*(?=\\S[^\\n]*\\*)",
+			"end": "\\*",
+			"patterns": [
+				{
+					"include": "#escaped"
+				},
+				{
+					"include": "#underlined"
+				},
+				{
+					"include": "#italic"
+				},
+				{
+					"include": "#marked"
+				},
+				{
+					"include": "#strike"
+				},
+				{"include": "#inline_code"}
+			]
+		},
+		"italic": {
+			"name": "markup.italic.notedown",
+			"begin": "\\/(?=\\S[^\\n]*\\/)",
+			"end": "\\/",
+			"patterns": [
+				{
+					"include": "#escaped"
+				},
+				{
+					"include": "#underlined"
+				},
+				{
+					"include": "#bold"
+				},
+				{
+					"include": "#marked"
+				},
+				{
+					"include": "#strike"
+				}
+			]
+		},
+		"marked": {
+			"name": "markup.changed.notedown",
+			"begin": "=(?=\\S[^\\n]*=)",
+			"end": "=",
+			"patterns": [
+				{
+					"include": "#escaped"
+				},
+				{
+					"include": "#underlined"
+				},
+				{
+					"include": "#bold"
+				},
+				{
+					"include": "#italic"
+				},
+				{
+					"include": "#strike"
+				}
+			]
+		},
+		"strike": {
+			"name": "markup.strikethrough.notedown",
+			"begin": "~(?=\\S[^\\n]*~)",
+			"end": "~",
+			"patterns": [
+				{
+					"include": "#escaped"
+				},
+				{
+					"include": "#underlined"
+				},
+				{
+					"include": "#bold"
+				},
+				{
+					"include": "#italic"
+				},
+				{
+					"include": "#marked"
+				},
+				{
+					"include": "#strike"
+				}
+			]
+		},
+		"inline_code": {
+			"name": "markup.inline.raw.notedown",
+			"begin": "`(?=\\S[^\\n]*`)",
+			"end": "`",
+			"patterns": [
+				{"include": "#escaped"}
+			]
+		},
+
+		"headline": {
+			"name": "markup.heading",
+			"contentName": "entity.name.section.markdown",
+			"begin": "(#{1,6})(?=(\\n| ))",
+			"end": "\\n",
+			"beginCaptures": {
+				"1": {"name": "punctuation.definition.heading.notedown"}
+			},
+			"patterns": [
+				{"include": "#styled_text"}
+			]
+		},
+
+		"command": {
+			"patterns": [
+				{"include": "#strings"},
+				{
+					"match": "(#)([a-z0-9_-]+)",
+					"captures": {
+						"1": {"name": "keyword.control.notedown"},
+						"2": {"name": "variable.other.notedown"}
+					}
+				}
+			]
+		},
+
+		"inline_command": {
+			"name": "entity.other.attribute-name",
+			"begin": "\\{(?=[^\\n]*\\})",
+			"end": "\\}",
+			"patterns": [
+				{"include": "#strings"},
+				{"include": "#command"}
+			]
+		}
+	},
+	"scopeName": "source.nd"
+}

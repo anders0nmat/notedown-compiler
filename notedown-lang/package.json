@@ -1,0 +1,25 @@
+{
+    "name": "notedown-lang",
+    "displayName": "notedown-lang",
+    "description": "Syntax highlighting for Notedown language",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.66.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [{
+            "id": "notedown",
+            "aliases": ["Notedown", "notedown"],
+            "extensions": [".nd"],
+            "configuration": "./language-configuration.json"
+        }],
+        "grammars": [{
+            "language": "notedown",
+            "scopeName": "source.nd",
+            "path": "./syntaxes/notedown.tmLanguage.json"
+        }]
+    }
+}
