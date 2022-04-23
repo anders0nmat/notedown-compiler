@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <filesystem>
 
 #include "notedown-compiler.hpp"
 
@@ -134,6 +135,7 @@ const std::string CONSOLE_HELP =
 std::vector<std::string> files, styles, emoji;
 std::unordered_map<std::string, std::string> args;
 std::string ofile;
+std::string exe_path;
 
 bool flagSet(std::string str) {
 	return args.count(str) > 0;
@@ -147,6 +149,7 @@ bool flagSet(std::initializer_list<std::string> strs) {
 }
 
 int main(int argc, const char *argv[]) {
+	exe_path = std::filesystem::path(argv[0]).parent_path().u8string();
 	bool ignoreNext;
 	for (int i = 1; i < argc; i++) {
 		if (ignoreNext){
@@ -212,19 +215,19 @@ int main(int argc, const char *argv[]) {
 	}
 
 	if (!flagSet({"-nods", "-nodefaultstyle"}))
-		styles.push_back(DEFAULT_STYLE_PATH);
+		styles.push_back(exe_path + "/" + DEFAULT_STYLE_PATH);
 
 	if (!flagSet({"-node", "-nodefaultemoji"}))
 		emoji.insert(emoji.end(), {
-			"../bin/emoji_lut/unicode-14/activities",
-			"../bin/emoji_lut/unicode-14/animals-nature",
-			"../bin/emoji_lut/unicode-14/flags",
-			"../bin/emoji_lut/unicode-14/food-drink",
-			"../bin/emoji_lut/unicode-14/objects",
-			"../bin/emoji_lut/unicode-14/people-body",
-			"../bin/emoji_lut/unicode-14/smileys-emotion",
-			"../bin/emoji_lut/unicode-14/symbols",
-			"../bin/emoji_lut/unicode-14/travel-places"
+			exe_path + "/emoji_lut/unicode-14/activities",
+			exe_path + "/emoji_lut/unicode-14/animals-nature",
+			exe_path + "/emoji_lut/unicode-14/flags",
+			exe_path + "/emoji_lut/unicode-14/food-drink",
+			exe_path + "/emoji_lut/unicode-14/objects",
+			exe_path + "/emoji_lut/unicode-14/people-body",
+			exe_path + "/emoji_lut/unicode-14/smileys-emotion",
+			exe_path + "/emoji_lut/unicode-14/symbols",
+			exe_path + "/emoji_lut/unicode-14/travel-places"
 		});
 
 
@@ -234,7 +237,6 @@ int main(int argc, const char *argv[]) {
 	// ------------------------------ //
 	// ------- COMPILER START ------- //
 	// ------------------------------ //
-
 
 
 	NotedownCompiler compiler;
@@ -322,8 +324,10 @@ int main(int argc, const char *argv[]) {
 	for (auto & style : styles) {
 		if (flagSet({ "-sd", "-styledoc", "-styledocument" })) {
 			std::ifstream css(style);
-			if (!css.is_open())
+			if (!css.is_open()) {
+				std::cerr << "Style could not be opened: " << style << std::endl;
 				continue;
+			}
 			html << "<!-- " << style << " -->\n";
 			html << "<style>\n";
 			html << css.rdbuf();

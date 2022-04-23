@@ -129,7 +129,7 @@ void NotedownCompiler::addEmojiLUT(std::string filename) {
 
 void NotedownCompiler::addEmojiLUT(std::vector<std::string> filenames) {
 	for (auto & e : filenames)
-			addEmojiLUT(e);
+		addEmojiLUT(e);
 }
 
 void NotedownCompiler::addSymbols(std::string str) {
