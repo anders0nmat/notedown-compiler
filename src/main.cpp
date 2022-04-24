@@ -130,6 +130,10 @@ const std::string CONSOLE_HELP =
 "\t-nodefaultemoji\t: Disables the default emoji LUTs\n"
 "\t-nod\n"
 "\t-nodefault\t: Disable default css and emoji LUT\n"
+"\t-q\n"
+"\t-quiet\t: Disables debug CLI Output\n"
+"\t-oc\n"
+"\t-outconsole\t: Result will be outputted to console\n"
 ;
 
 std::vector<std::string> files, styles, emoji;
@@ -195,7 +199,10 @@ int main(int argc, const char *argv[]) {
 	if (files.empty())
 		args["-?"] = "";
 
-	std::cout << "\nNotedown Compiler " + COMPILER_VERSION << std::endl;
+	bool notQuiet = !flagSet({"-q", "-quiet"});
+
+	if (notQuiet)
+		std::cout << "\nNotedown Compiler " + COMPILER_VERSION << std::endl;
 
 	// Print Help
 	if (flagSet({ "-?", "-h", "-help" })) {
@@ -215,7 +222,7 @@ int main(int argc, const char *argv[]) {
 	}
 
 	if (!flagSet({"-nods", "-nodefaultstyle"}))
-		styles.push_back(exe_path + "/" + DEFAULT_STYLE_PATH);
+		styles.push_back(exe_path + "\\" + DEFAULT_STYLE_PATH);
 
 	if (!flagSet({"-node", "-nodefaultemoji"}))
 		emoji.insert(emoji.end(), {
@@ -316,10 +323,20 @@ int main(int argc, const char *argv[]) {
 	compiler.prepareAST();
 
 
-	std::ofstream html(ofile);
+	std::ofstream html;
+	std::ostream * outBuf = nullptr;
+
+	if (flagSet({"-oc", "-outconsole"})) {
+		outBuf = &std::cout;
+	}
+	else {
+		html.open(ofile);
+		outBuf = &html;
+	}
 	
-	html << "<!DOCTYPE html>\n" << "<html>\n" << "<head>\n";
-	html << "<meta charset=\"utf-8\">\n";
+
+	*outBuf << "<!DOCTYPE html>\n" << "<html>\n" << "<head>\n";
+	*outBuf << "<meta charset=\"utf-8\">\n";
 
 	for (auto & style : styles) {
 		if (flagSet({ "-sd", "-styledoc", "-styledocument" })) {
@@ -328,22 +345,24 @@ int main(int argc, const char *argv[]) {
 				std::cerr << "Style could not be opened: " << style << std::endl;
 				continue;
 			}
-			html << "<!-- " << style << " -->\n";
-			html << "<style>\n";
-			html << css.rdbuf();
-			html << "</style>\n";
+			*outBuf << "<!-- " << style << " -->\n";
+			*outBuf << "<style>\n";
+			*outBuf << css.rdbuf();
+			*outBuf << "</style>\n";
 
 		}
 		else
-			html << "<link rel=\"stylesheet\" href=\"" << style << "\">\n";
+			*outBuf << "<link rel=\"stylesheet\" href=\"" << style << "\">\n";
 	}
 
-	html << "</head>\n" << "<body>\n";
-	html << compiler.getRawHtml();
-	html << "</body>\n" << "</html>\n";
+	*outBuf << "</head>\n" << "<body>\n";
+	*outBuf << compiler.getRawHtml();
+	*outBuf << "</body>\n" << "</html>\n";
+	
 	html.close();
 
-	std::cout << "Success!" << "\n" << "New File: " << ofile << std::endl;
+	if (notQuiet)
+		std::cout << "Success!" << "\n" << "New File: " << ofile << std::endl;
 	
 	return 0;
 }
