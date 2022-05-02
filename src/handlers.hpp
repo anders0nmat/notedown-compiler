@@ -70,7 +70,7 @@ public:
 
 	bool canHandle(Parser * lex) override;
 
-	std::tuple<std::unique_ptr<_ASTElement>, bool> handle(Parser * lex) override;
+	Notedown::Handler::HandlerReturn handle(Parser * lex) override;
 
 	std::unique_ptr<_ASTElement> finish(Parser * lex) override;
 };
@@ -86,7 +86,7 @@ public:
 
 	bool canHandle(Parser * lex) override;
 
-	std::tuple<std::unique_ptr<_ASTElement>, bool> handle(Parser * lex) override;
+	Notedown::Handler::HandlerReturn handle(Parser * lex) override;
 
 	std::unique_ptr<_ASTElement> finish(Parser * lex) override;
 };
@@ -102,7 +102,7 @@ public:
 
 	bool canHandle(Parser * lex) override;
 
-	std::tuple<std::unique_ptr<_ASTElement>, bool> handle(Parser * lex) override;
+	Notedown::Handler::HandlerReturn handle(Parser * lex) override;
 
 	std::unique_ptr<_ASTElement> finish(Parser * lex) override;
 };
@@ -123,7 +123,7 @@ public:
 
 	bool canHandle(Parser * lex) override;
 
-	std::tuple<std::unique_ptr<_ASTElement>, bool> handle(Parser * lex) override;
+	Notedown::Handler::HandlerReturn handle(Parser * lex) override;
 
 	std::unique_ptr<_ASTElement> finish(Parser * lex) override;
 };
@@ -141,7 +141,7 @@ public:
 
 	bool canHandle(Parser * lex) override;
 
-	std::tuple<std::unique_ptr<_ASTElement>, bool> handle(Parser * lex) override;
+	Notedown::Handler::HandlerReturn handle(Parser * lex) override;
 
 	std::unique_ptr<_ASTElement> finish(Parser * lex) override;
 };
@@ -159,7 +159,7 @@ public:
 
 	bool canHandle(Parser * lex) override;
 
-	std::tuple<std::unique_ptr<_ASTElement>, bool> handle(Parser * lex) override;
+	Notedown::Handler::HandlerReturn handle(Parser * lex) override;
 
 	std::unique_ptr<_ASTElement> finish(Parser * lex) override;
 };
@@ -182,7 +182,7 @@ public:
 
 	bool canHandle(Parser * lex) override;
 
-	std::tuple<std::unique_ptr<_ASTElement>, bool> handle(Parser * lex) override;
+	Notedown::Handler::HandlerReturn handle(Parser * lex) override;
 
 	std::unique_ptr<_ASTElement> finish(Parser * lex) override;
 };
@@ -200,7 +200,7 @@ public:
 
 	bool canHandle(Parser * lex) override;
 
-	std::tuple<std::unique_ptr<_ASTElement>, bool> handle(Parser * lex) override;
+	Notedown::Handler::HandlerReturn handle(Parser * lex) override;
 
 	std::unique_ptr<_ASTElement> finish(Parser * lex) override;
 };
@@ -222,7 +222,7 @@ public:
 
 	bool canHandle(Parser * lex) override;
 
-	std::tuple<std::unique_ptr<_ASTElement>, bool> handle(Parser * lex) override;
+	Notedown::Handler::HandlerReturn handle(Parser * lex) override;
 
 	std::unique_ptr<_ASTElement> finish(Parser * lex) override;
 };
@@ -237,7 +237,7 @@ public:
 
 	bool canHandle(Parser * lex) override;
 
-	std::tuple<std::unique_ptr<_ASTElement>, bool> handle(Parser * lex) override;
+	Notedown::Handler::HandlerReturn handle(Parser * lex) override;
 
 	std::unique_ptr<_ASTElement> finish(Parser * lex) override;
 };
@@ -256,7 +256,7 @@ public:
 
 	bool canHandle(Parser * lex) override;
 
-	std::tuple<std::unique_ptr<_ASTElement>, bool> handle(Parser * lex) override;
+	Notedown::Handler::HandlerReturn handle(Parser * lex) override;
 
 	std::unique_ptr<_ASTElement> finish(Parser * lex) override;
 };
@@ -275,22 +275,22 @@ public:
 
 	InlineTemplateHandler() {}
 
-	std::unique_ptr<InlineHandler> createNew() {
+	std::unique_ptr<InlineHandler> createNew() override {
 		return std::make_unique<InlineTemplateHandler<indicator>>();
 	}
 
-	std::string triggerChars() {
+	std::string triggerChars() override {
 		return std::string(1, indicator);
 	}
 
-	bool canHandle(Parser * lex) {
+	bool canHandle(Parser * lex) override {
 		return (lex->lastToken == tokSym) &&
 			(lex->lastString[0] == indicator) &&
 			(lex->lastInt % 2 != 0) && // At least one Indicator left open, e.g. *** -> *<firstContent>**<secondContent>
 			(lex->peektok() != tokSpace) && (lex->peektok() != tokNewline);
 	}
 
-	std::tuple<std::unique_ptr<_ASTInlineElement>, bool> handle(Parser * lex) {
+	Notedown::Handler::InlineHandlerReturn handle(Parser * lex) override {
 		lex->gettok(); // Consume opening indicator
 		std::unique_ptr<ASTInlineText> content;
 		bool endOfLine;
@@ -300,16 +300,16 @@ public:
 			// Ended on indicator
 			lex->gettok(); // Consume closing indicator
 			if (content != nullptr)
-				return std::make_tuple(std::make_unique<ASTTextModification>(indicator, std::move(content)), true);
-			return std::make_tuple(nullptr, true);
+				return Notedown::Handler::make_result(std::make_unique<ASTTextModification>(indicator, std::move(content)), true);
+			return Notedown::Handler::make_result(nullptr, true);
 		}
 
 		content->prependElement(std::make_unique<ASTPlainText>(1, indicator));
 
-		return std::make_tuple(std::move(content), true);
+		return Notedown::Handler::make_result(content, true);
 	}
 
-	std::unique_ptr<_ASTElement> finish(Parser * lex) {
+	std::unique_ptr<_ASTElement> finish(Parser * lex) override {
 		return nullptr;
 	}
 };
@@ -327,7 +327,7 @@ public:
 
 	bool canHandle(Parser * lex) override;
 
-	std::tuple<std::unique_ptr<_ASTInlineElement>, bool> handle(Parser * lex) override;
+	Notedown::Handler::InlineHandlerReturn handle(Parser * lex) override;
 };
 
 class InlineModifierHandler : public InlineHandler {
@@ -349,7 +349,7 @@ public:
 
 	bool canHandle(Parser * lex) override;
 
-	std::tuple<std::unique_ptr<_ASTInlineElement>, bool> handle(Parser * lex) override;
+	Notedown::Handler::InlineHandlerReturn handle(Parser * lex) override;
 };
 
 class InlineSmileyHandler : public InlineHandler {
@@ -365,7 +365,7 @@ public:
 
 	bool canHandle(Parser * lex) override;
 
-	std::tuple<std::unique_ptr<_ASTInlineElement>, bool> handle(Parser * lex) override;
+	Notedown::Handler::InlineHandlerReturn handle(Parser * lex) override;
 };
 
 class InlineCommandHandler : public InlineHandler {
@@ -380,5 +380,21 @@ public:
 
 	bool canHandle(Parser * lex) override;
 
-	std::tuple<std::unique_ptr<_ASTInlineElement>, bool> handle(Parser * lex) override;
+	Notedown::Handler::InlineHandlerReturn handle(Parser * lex) override;
+};
+
+class InlineTaskHandler : public InlineHandler {
+protected:
+
+public:
+
+	InlineTaskHandler() {}
+
+	std::unique_ptr<InlineHandler> createNew() override;
+
+	std::string triggerChars() override;
+
+	bool canHandle(Parser * lex) override;
+
+	Notedown::Handler::InlineHandlerReturn handle(Parser * lex) override;
 };

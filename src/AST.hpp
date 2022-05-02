@@ -7,9 +7,10 @@
 #include <functional>
 
 enum ASTProcess {
-	procRegister, // Elements get the chance to register themselves to their parent
+	procRegister, // Elements get the chance to register themselves to their parent (Applies inter-documental)
 	procResolve, // Elements resolve their commands, which processes dependencies
 	procConsume, // Elements search for empty Childs and aquire their commands (if possible)
+	procIdentify, // Elements register their id if applicable (Applies inter-documental)
 	procExecutePrep, // Elements execute their command functions
 	procExecuteMain, // Elements execute their command functions
 	procExecutePost, // Elements execute their command functions
@@ -106,6 +107,7 @@ protected:
 	virtual void _consume(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc);
 	virtual void _register(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc);
 	virtual void _resolve(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc);
+	virtual void _identify(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc);
 
 	virtual void _execute(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc);
 public:
@@ -488,6 +490,22 @@ public:
 	std::string getHtml(ASTRequestFunc request) override;
 };
 
+/*
+	Represents a checkbox. Only valid if first element of unordered list
+*/
+class ASTTask : public _ASTInlineElement {
+protected:
+	void _resolve(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) override;
+public:
+	char checked;
+	bool valid;
+	ASTTask(char checked) : checked(checked) {}
+
+	bool isEmpty() override;
+
+	std::string getHtml(ASTRequestFunc request) override;
+};
+
 
 // -------------------------------------- //
 // --------- MULTILINE ELEMENTS --------- //
@@ -539,6 +557,7 @@ protected:
 	std::string className() override {return "ASTHeading";}
 
 	void _consume(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) override;
+	void _identify(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) override;
 public:
 	int level = 0;
 	std::unique_ptr<ASTInlineText> content;

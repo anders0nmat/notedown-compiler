@@ -1,11 +1,8 @@
-// #include "inline_handler.hpp"
-// #include "parser_handler.hpp"
 #include "handlers.hpp"
 #include "notedown-templates.hpp"
 
-// void Parser::addDefaultHandlers() {
-	
-// }
+
+using namespace Notedown::Handler;
 
 void NotedownCompiler::addDefaultHandlers() {
 	addHandler<UnorderedListHandler>("H_ulist");
@@ -25,12 +22,10 @@ void NotedownCompiler::addDefaultHandlers() {
 	addInlineHandler<InlineTemplateHandler<'~'>>("I_strikethrough");
 	addInlineHandler<InlineTemplateHandler<'='>>("I_highlight");
 
+	addInlineHandler<InlineTaskHandler>("I_task");
 	addInlineHandler<InlineSmileyHandler>("I_emoji");
-
 	addInlineHandler<InlineCodeHandler>("I_code");
-
 	addInlineHandler<InlineModifierHandler>("I_link");
-
 	addInlineHandler<InlineCommandHandler>("I_command");
 
 
@@ -38,14 +33,16 @@ void NotedownCompiler::addDefaultHandlers() {
 	addHandlerAlias("H_default", "H_paragraph");
 }
 
+
 // ------------------------------------ //
 // ---------- Block Handlers ---------- //
 // ------------------------------------ //
 
+
 // ----- ParagraphHandler ----- // 
 
 std::unique_ptr<ParserHandler> ParagraphHandler::createNew() {
-	return std::make_unique<ParagraphHandler>();
+	return newSelf<ParagraphHandler>();
 }
 
 bool ParagraphHandler::canHandle(Parser * lex) {
@@ -54,7 +51,7 @@ bool ParagraphHandler::canHandle(Parser * lex) {
 		(lex->lastToken == tokText);
 }
 
-std::tuple<std::unique_ptr<_ASTElement>, bool> ParagraphHandler::handle(Parser * lex) {
+HandlerReturn ParagraphHandler::handle(Parser * lex) {
 	if (content == nullptr) {
 		// Remove Spaces in front
 		while (lex->lastToken == tokSpace) 
@@ -69,13 +66,13 @@ std::tuple<std::unique_ptr<_ASTElement>, bool> ParagraphHandler::handle(Parser *
 	if (e == nullptr) {
 		// An empty line occured
 		if (content->size() == 0)
-			return std::make_tuple(nullptr, true);
-		return std::make_tuple(std::move(content), true);
+			return make_result(nullptr, true);
+		return make_result(content, true);
 	}
 	content->addElement(std::move(e));
 
 	// Dont finish, dont return anything
-	return std::make_tuple(nullptr, false);
+	return handler_continue;
 }
 
 std::unique_ptr<_ASTElement> ParagraphHandler::finish(Parser * lex) {
@@ -86,7 +83,7 @@ std::unique_ptr<_ASTElement> ParagraphHandler::finish(Parser * lex) {
 // ----- HeadingHandler ----- //
 
 std::unique_ptr<ParserHandler> HeadingHandler::createNew() {
-	return std::make_unique<HeadingHandler>();
+	return newSelf<HeadingHandler>();
 }
 
 std::string HeadingHandler::triggerChars() {
@@ -100,7 +97,7 @@ bool HeadingHandler::canHandle(Parser * lex) {
 		(lex->peektok() == tokSpace || lex->peektok() == tokNewline);
 }
 
-std::tuple<std::unique_ptr<_ASTElement>, bool> HeadingHandler::handle(Parser * lex) {
+HandlerReturn HeadingHandler::handle(Parser * lex) {
 	int level = lex->lastInt;
 	lex->gettok(); // Consume '#'
 	if (lex->lastToken == tokSpace) {
@@ -112,14 +109,14 @@ std::tuple<std::unique_ptr<_ASTElement>, bool> HeadingHandler::handle(Parser * l
 	if (lex->lastToken == tokNewline) {
 		// Empty Heading
 		lex->gettok(); // Consume newline
-		return std::make_tuple(std::make_unique<ASTHeading>(level, nullptr), true);
+		return make_result(std::make_unique<ASTHeading>(level, nullptr), true);
 	}
 
 	std::unique_ptr<ASTInlineText> t;
 	std::tie(t, std::ignore) = lex->parseText(false);
 	lex->gettok(); // Consume newline
 
-	return std::make_tuple(std::make_unique<ASTHeading>(level, std::move(t)), true);
+	return make_result(std::make_unique<ASTHeading>(level, std::move(t)), true);
 }
 
 std::unique_ptr<_ASTElement> HeadingHandler::finish(Parser * lex) {
@@ -130,7 +127,7 @@ std::unique_ptr<_ASTElement> HeadingHandler::finish(Parser * lex) {
 // ----- HLineHandler ----- //
 
 std::unique_ptr<ParserHandler> HLineHandler::createNew() {
-	return std::make_unique<HLineHandler>();
+	return newSelf<HLineHandler>();
 }
 
 std::string HLineHandler::triggerChars() {
@@ -144,10 +141,10 @@ bool HLineHandler::canHandle(Parser * lex) {
 		(lex->peektok() == tokNewline);
 }
 
-std::tuple<std::unique_ptr<_ASTElement>, bool> HLineHandler::handle(Parser * lex) {
+HandlerReturn HLineHandler::handle(Parser * lex) {
 	lex->gettok(); // Consume ---
 	lex->gettok(); // Consume Newline
-	return std::make_tuple(std::make_unique<ASTHLine>(), true);
+	return make_result(std::make_unique<ASTHLine>(), true);
 }
 
 std::unique_ptr<_ASTElement> HLineHandler::finish(Parser * lex) {
@@ -158,7 +155,7 @@ std::unique_ptr<_ASTElement> HLineHandler::finish(Parser * lex) {
 // ----- BlockquoteHandler ----- //
 
 std::unique_ptr<ParserHandler> BlockquoteHandler::createNew() {
-	return std::make_unique<BlockquoteHandler>();
+	return newSelf<BlockquoteHandler>();
 }
 
 std::string BlockquoteHandler::triggerChars() {
@@ -180,7 +177,7 @@ bool BlockquoteHandler::canHandle(Parser * lex) {
 		(lex->peektok() == tokSpace || lex->peektok() == tokNewline);
 }
 
-std::tuple<std::unique_ptr<_ASTElement>, bool> BlockquoteHandler::handle(Parser * lex) {
+HandlerReturn BlockquoteHandler::handle(Parser * lex) {
 	if (content != nullptr && indentStyle == 0)
 		indentStyle = lex->lastString[0];
 	
@@ -208,7 +205,7 @@ std::tuple<std::unique_ptr<_ASTElement>, bool> BlockquoteHandler::handle(Parser 
 		} while (redo);
 	}
 
-	return std::make_tuple(nullptr, false);
+	return handler_continue;
 }
 
 std::unique_ptr<_ASTElement> BlockquoteHandler::finish(Parser * lex) {
@@ -224,7 +221,7 @@ std::unique_ptr<_ASTElement> BlockquoteHandler::finish(Parser * lex) {
 // ----- UnorderedListHandler ----- //
 
 std::unique_ptr<ParserHandler> UnorderedListHandler::createNew() {
-	return std::make_unique<UnorderedListHandler>();
+	return newSelf<UnorderedListHandler>();
 }
 
 std::string UnorderedListHandler::triggerChars() {
@@ -239,7 +236,7 @@ bool UnorderedListHandler::canHandle(Parser * lex) {
 		(lex->peektok() == tokSpace || lex->peektok() == tokNewline));
 }
 
-std::tuple<std::unique_ptr<_ASTElement>, bool> UnorderedListHandler::handle(Parser * lex) {
+HandlerReturn UnorderedListHandler::handle(Parser * lex) {
 	if (list == nullptr) {
 		// Create List
 		list = std::make_unique<ASTUnorderedList>();
@@ -272,7 +269,7 @@ std::tuple<std::unique_ptr<_ASTElement>, bool> UnorderedListHandler::handle(Pars
 		} while (redo);
 	}
 
-	return std::make_tuple(nullptr, false);
+	return handler_continue;
 }
 
 std::unique_ptr<_ASTElement> UnorderedListHandler::finish(Parser * lex) {
@@ -286,7 +283,7 @@ std::unique_ptr<_ASTElement> UnorderedListHandler::finish(Parser * lex) {
 // ----- OrderedListHandler ----- //
 
 std::unique_ptr<ParserHandler> OrderedListHandler::createNew() {
-	return std::make_unique<OrderedListHandler>();
+	return newSelf<OrderedListHandler>();
 }
 
 std::string OrderedListHandler::triggerChars() {
@@ -300,7 +297,7 @@ bool OrderedListHandler::canHandle(Parser * lex) {
 		(lex->peektok() == tokSpace || lex->peektok() == tokNewline));
 }
 
-std::tuple<std::unique_ptr<_ASTElement>, bool> OrderedListHandler::handle(Parser * lex) {
+HandlerReturn OrderedListHandler::handle(Parser * lex) {
 	if (list == nullptr) {
 		// Create List
 		list = std::make_unique<ASTOrderedList>();
@@ -333,7 +330,7 @@ std::tuple<std::unique_ptr<_ASTElement>, bool> OrderedListHandler::handle(Parser
 		} while (redo);
 	}
 
-	return std::make_tuple(nullptr, false);
+	return handler_continue;
 }
 
 std::unique_ptr<_ASTElement> OrderedListHandler::finish(Parser * lex) {
@@ -347,7 +344,7 @@ std::unique_ptr<_ASTElement> OrderedListHandler::finish(Parser * lex) {
 // ----- CodeHandler ----- //
 
 std::unique_ptr<ParserHandler> CodeHandler::createNew() {
-	return std::make_unique<CodeHandler>();
+	return newSelf<CodeHandler>();
 }
 
 std::string CodeHandler::triggerChars() {
@@ -363,7 +360,7 @@ bool CodeHandler::canHandle(Parser * lex) {
 		(lex->lastInt >= 3);
 }
 
-std::tuple<std::unique_ptr<_ASTElement>, bool> CodeHandler::handle(Parser * lex) {
+HandlerReturn CodeHandler::handle(Parser * lex) {
 	if (fenceCount == 0) {
 		// Remove Spaces in front
 		while (lex->lastToken == tokSpace) 
@@ -377,7 +374,7 @@ std::tuple<std::unique_ptr<_ASTElement>, bool> CodeHandler::handle(Parser * lex)
 			std::tie(firstLine, std::ignore) = lex->parseText(false);
 			lex->gettok(); // Eat Newline
 		}
-		return std::make_tuple(nullptr, false);
+		return handler_continue;
 	}
 
 	std::string currLine;
@@ -398,7 +395,7 @@ std::tuple<std::unique_ptr<_ASTElement>, bool> CodeHandler::handle(Parser * lex)
 		std::unique_ptr<ASTCodeBlock> code = std::make_unique<ASTCodeBlock>(lang);
 		for (auto & e : content)
 			code->addElement(std::move(e));
-		return std::make_tuple(std::move(code), true);
+		return make_result(std::move(code), true);
 	}
 
 	// do {
@@ -416,7 +413,7 @@ std::tuple<std::unique_ptr<_ASTElement>, bool> CodeHandler::handle(Parser * lex)
 		// 		std::unique_ptr<ASTCodeBlock> code = std::make_unique<ASTCodeBlock>(lang);
 		// 		for (auto & e : content)
 		// 			code->addElement(std::move(e));
-		// 		return std::make_tuple(std::move(code), true);
+		// 		return make_result(std::move(code), true);
 		// 	}
 		// 	else {
 		// 		// Treat as regular text
@@ -442,7 +439,7 @@ std::tuple<std::unique_ptr<_ASTElement>, bool> CodeHandler::handle(Parser * lex)
 
 	// content.push_back(std::move(line));
 	// Dont finish, dont return anything
-	return std::make_tuple(nullptr, false);
+	return handler_continue;
 }
 
 std::unique_ptr<_ASTElement> CodeHandler::finish(Parser * lex) {
@@ -456,7 +453,7 @@ std::unique_ptr<_ASTElement> CodeHandler::finish(Parser * lex) {
 // ----- InfoBlockHandler ----- //
 
 std::unique_ptr<ParserHandler> InfoBlockHandler::createNew() {
-	return std::make_unique<InfoBlockHandler>();
+	return newSelf<InfoBlockHandler>();
 }
 
 std::string InfoBlockHandler::triggerChars() {
@@ -471,10 +468,10 @@ bool InfoBlockHandler::canHandle(Parser * lex) {
 		(lex->lastString[0] == '>') && 
 		(lex->lastInt == 1) && 
 		((lex->peektok() == tokText) ||
-		(lex->peektok() == tokSym && lex->currchar() == ':'));
+		(lex->peektok() == tokSym && lex->peekchar() == ':'));
 }
 
-std::tuple<std::unique_ptr<_ASTElement>, bool> InfoBlockHandler::handle(Parser * lex) {	
+HandlerReturn InfoBlockHandler::handle(Parser * lex) {	
 	if (content == nullptr) {
 		lex->gettok(); // Consume >
 		bool success, sym = false;
@@ -489,7 +486,7 @@ std::tuple<std::unique_ptr<_ASTElement>, bool> InfoBlockHandler::handle(Parser *
 				txt->addElement(std::make_unique<ASTPlainText>(">" + type));
 				if (success)
 					txt->addElement(std::move(std::get<0>(lex->parseText())));
-				return std::make_tuple(std::move(txt), true);
+				return make_result(txt, true);
 			}
 		}
 		else {
@@ -497,7 +494,7 @@ std::tuple<std::unique_ptr<_ASTElement>, bool> InfoBlockHandler::handle(Parser *
 				std::unique_ptr<ASTInlineText> txt = std::make_unique<ASTInlineText>();
 				txt->addElement(std::make_unique<ASTPlainText>(">"));
 				txt->addElement(std::move(std::get<0>(lex->parseText())));
-				return std::make_tuple(std::move(txt), true);
+				return make_result(txt, true);
 			}
 			lex->gettok(); // Consume :
 			std::tie(type, success) = lex->readUntil([](Parser * lex) {
@@ -510,7 +507,7 @@ std::tuple<std::unique_ptr<_ASTElement>, bool> InfoBlockHandler::handle(Parser *
 				txt->addElement(std::make_unique<ASTPlainText>(">:" + type));
 				if (success)
 					txt->addElement(std::move(std::get<0>(lex->parseText())));
-				return std::make_tuple(std::move(txt), true);
+				return make_result(txt, true);
 			}
 			lex->gettok(); // Consume closing :
 			if (lex->lastToken != tokSym || lex->lastString[0] != '>' || lex->lastInt != 1 || lex->peektok() != tokSpace) {
@@ -519,7 +516,7 @@ std::tuple<std::unique_ptr<_ASTElement>, bool> InfoBlockHandler::handle(Parser *
 				txt->addElement(std::make_unique<ASTPlainText>(">:" + type + ":"));
 				if (success)
 					txt->addElement(std::move(std::get<0>(lex->parseText())));
-				return std::make_tuple(std::move(txt), true);
+				return make_result(txt, true);
 			}
 			sym = true;
 		}
@@ -538,12 +535,12 @@ std::tuple<std::unique_ptr<_ASTElement>, bool> InfoBlockHandler::handle(Parser *
 			content->addElement(e);
 		} while (redo);
 
-		return std::make_tuple(nullptr, false);
+		return handler_continue;
 	}
 	
 	handleBlock(lex);
 
-	return std::make_tuple(nullptr, false);
+	return handler_continue;
 }
 
 std::unique_ptr<_ASTElement> InfoBlockHandler::finish(Parser * lex) {
@@ -558,7 +555,7 @@ std::unique_ptr<_ASTElement> InfoBlockHandler::finish(Parser * lex) {
 // ----- IdDefinitionHandler ----- //
 
 std::unique_ptr<ParserHandler> IdDefinitionHandler::createNew() {
-	return std::make_unique<IdDefinitionHandler>();
+	return newSelf<IdDefinitionHandler>();
 }
 
 char IdDefinitionHandler::invType() {
@@ -583,13 +580,13 @@ bool IdDefinitionHandler::canHandle(Parser * lex) {
 		(lex->lastInt == 1) &&
 		(lex->peektok() == tokSym) &&
 		(
-			(lex->currchar() == '(') ||
-			(lex->currchar() == '{') ||
-			(lex->currchar() == '<')
+			(lex->peekchar() == '(') ||
+			(lex->peekchar() == '{') ||
+			(lex->peekchar() == '<')
 		);
 }
 
-std::tuple<std::unique_ptr<_ASTElement>, bool> IdDefinitionHandler::handle(Parser * lex) {
+HandlerReturn IdDefinitionHandler::handle(Parser * lex) {
 	if (content == nullptr) {
 		lex->gettok(); // Consume %
 		type = lex->lastString[0];
@@ -602,14 +599,14 @@ std::tuple<std::unique_ptr<_ASTElement>, bool> IdDefinitionHandler::handle(Parse
 				(lex->lastString[0] == _type) &&
 				(lex->lastInt == 1) &&
 				(lex->peektok() == tokSym) &&
-				(lex->currchar() == ':');
+				(lex->peekchar() == ':');
 		});
 
 		if (!success) {
 			std::unique_ptr<ASTInlineText> t = std::make_unique<ASTInlineText>();
 			t->addElement(std::make_unique<ASTPlainText>("%" + std::string(1, type)));
 			t->addElement(std::make_unique<ASTPlainText>(id));
-			return std::make_tuple(std::move(t), true);
+			return make_result(t, true);
 		}
 
 		lex->gettok(); // Consume closing Bracket
@@ -623,7 +620,7 @@ std::tuple<std::unique_ptr<_ASTElement>, bool> IdDefinitionHandler::handle(Parse
 			p->addElement(std::move(t));
 			p->addElement(std::get<0>(lex->parseText()));
 			lex->gettok(); // Consume newline
-			return std::make_tuple(std::move(p), true);
+			return make_result(p, true);
 		}
 
 		lex->gettok(); // Consume :
@@ -642,7 +639,7 @@ std::tuple<std::unique_ptr<_ASTElement>, bool> IdDefinitionHandler::handle(Parse
 				std::tie(url, command, success) = lex->parseLink('\0');
 				content = std::make_unique<ASTIdDefinition>(id, url, type);
 				content->addCommand(ASTCommand(command));
-				return std::make_tuple(std::move(content), true);
+				return make_result(content, true);
 			case '{':
 				// <Commands>
 				std::tie(command, success) = lex->readUntil([&inQuote](Parser * lex) {
@@ -650,7 +647,7 @@ std::tuple<std::unique_ptr<_ASTElement>, bool> IdDefinitionHandler::handle(Parse
 				});
 				content = std::make_unique<ASTIdDefinition>(id, "", type);
 				content->addCommand(ASTCommand(command));
-				return std::make_tuple(std::move(content), true);
+				return make_result(content, true);
 			case '<':
 				// <Replace Content>
 				content = std::make_unique<ASTIdDefinition>(id, "", type);
@@ -669,14 +666,14 @@ std::tuple<std::unique_ptr<_ASTElement>, bool> IdDefinitionHandler::handle(Parse
 				p->addElement(std::move(t));
 				p->addElement(std::get<0>(lex->parseText()));
 				lex->gettok(); // Consume newline
-				return std::make_tuple(std::move(p), true);
+				return make_result(p, true);
 		}
-		return std::make_tuple(nullptr, false);
+		return handler_continue;
 	}
 	
 	handleBlock(lex);
 
-	return std::make_tuple(nullptr, false);
+	return handler_continue;
 }
 
 std::unique_ptr<_ASTElement> IdDefinitionHandler::finish(Parser * lex) {
@@ -687,7 +684,7 @@ std::unique_ptr<_ASTElement> IdDefinitionHandler::finish(Parser * lex) {
 // ----- FootnoteHandler ----- //
 
 std::unique_ptr<ParserHandler> FootnoteHandler::createNew() {
-	return std::make_unique<FootnoteHandler>();
+	return newSelf<FootnoteHandler>();
 }
 
 std::string FootnoteHandler::triggerChars() {
@@ -707,7 +704,7 @@ bool FootnoteHandler::canHandle(Parser * lex) {
 		);
 }
 
-std::tuple<std::unique_ptr<_ASTElement>, bool> FootnoteHandler::handle(Parser * lex) {
+HandlerReturn FootnoteHandler::handle(Parser * lex) {
 	if (content == nullptr) {
 		lex->gettok(); // Consume ^
 		std::string id;
@@ -721,7 +718,7 @@ std::tuple<std::unique_ptr<_ASTElement>, bool> FootnoteHandler::handle(Parser * 
 		if (!succ) {
 			std::unique_ptr<ASTInlineText> t = std::make_unique<ASTInlineText>();
 			t->addElement(std::make_unique<ASTPlainText>("^" + id));
-			return std::make_tuple(std::move(t), true);
+			return make_result(t, true);
 		}
 		lex->gettok(); // Consume :
 		lex->gettok(); // Consume spaces
@@ -732,10 +729,10 @@ std::tuple<std::unique_ptr<_ASTElement>, bool> FootnoteHandler::handle(Parser * 
 			std::tie(e, redo) = lex->parseLine(handler);
 			content->addElement(e);
 		} while (redo);
-		return std::make_tuple(nullptr, false);
+		return handler_continue;
 	}	
 	handleBlock(lex);
-	return std::make_tuple(nullptr, false);
+	return handler_continue;
 }
 
 std::unique_ptr<_ASTElement> FootnoteHandler::finish(Parser * lex) {
@@ -746,7 +743,7 @@ std::unique_ptr<_ASTElement> FootnoteHandler::finish(Parser * lex) {
 // ----- CollapseHandler ----- //
 
 std::unique_ptr<ParserHandler> CollapseHandler::createNew() {
-	return std::make_unique<CollapseHandler>();
+	return newSelf<CollapseHandler>();
 }
 	
 std::string CollapseHandler::triggerChars() {
@@ -762,11 +759,11 @@ bool CollapseHandler::canHandle(Parser * lex) {
 		(lex->lastInt <= 2) &&
 		(lex->lastString[0] == '+') &&
 		(lex->peektok() == tokSym) &&
-		(lex->currchar() == '-')
+		(lex->peekchar() == '-')
 	;
 }
 
-std::tuple<std::unique_ptr<_ASTElement>, bool> CollapseHandler::handle(Parser * lex) {
+HandlerReturn CollapseHandler::handle(Parser * lex) {
 	if (content == nullptr) {
 		bool isOpen = lex->lastInt == 2;
 		lex->gettok(); // Consume +
@@ -779,7 +776,7 @@ std::tuple<std::unique_ptr<_ASTElement>, bool> CollapseHandler::handle(Parser * 
 				e = std::make_unique<ASTInlineText>();
 			e->prependElement(std::make_unique<ASTPlainText>(1 + isOpen, '+'));
 			lex->gettok(); // Consume newline
-			return std::make_tuple(std::move(e), true);
+			return make_result(e, true);
 		}
 		lex->gettok(); // Consume -
 
@@ -790,12 +787,12 @@ std::tuple<std::unique_ptr<_ASTElement>, bool> CollapseHandler::handle(Parser * 
 		std::tie(e, std::ignore) = lex->parseText(false);
 		lex->gettok(); // Consume newline
 		content = std::make_unique<ASTCollapseBlock>(isOpen, std::move(e));
-		return std::make_tuple(nullptr, false);
+		return handler_continue;
 	}
 
 	handleBlock(lex);
 	
-	return std::make_tuple(nullptr, false);
+	return handler_continue;
 }
 
 std::unique_ptr<_ASTElement> CollapseHandler::finish(Parser * lex) {
@@ -811,7 +808,7 @@ std::unique_ptr<_ASTElement> CollapseHandler::finish(Parser * lex) {
 // ----- InlineCodeHandler ----- //
 
 std::unique_ptr<InlineHandler> InlineCodeHandler::createNew() {
-	return std::make_unique<InlineCodeHandler>();
+	return newSelf<InlineCodeHandler>();
 }
 
 std::string InlineCodeHandler::triggerChars() {
@@ -825,7 +822,7 @@ bool InlineCodeHandler::canHandle(Parser * lex) {
 		(lex->peektok() != tokSpace) && (lex->peektok() != tokNewline);
 }
 
-std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineCodeHandler::handle(Parser * lex) {
+InlineHandlerReturn InlineCodeHandler::handle(Parser * lex) {
 	lex->gettok(); // Consume opening indicator
 	std::unique_ptr<ASTInlineText> content;
 	bool endOfLine;
@@ -835,13 +832,13 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineCodeHandler::handle(P
 		// Ended on indicator
 		lex->gettok(); // Consume closing indicator
 		if (content != nullptr)
-			return std::make_tuple(std::make_unique<ASTTextModification>('`', std::move(content)), true);
-		return std::make_tuple(nullptr, true);
+			return make_result(std::make_unique<ASTTextModification>('`', std::move(content)), true);
+		return make_result(nullptr, true);
 	}
 	if (content != nullptr)
 		content->prependElement(std::make_unique<ASTPlainText>('`'));
 
-	return std::make_tuple(std::move(content), true);
+	return make_result(content, true);
 }
 
 
@@ -855,7 +852,7 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineCodeHandler::handle(P
 // 			(lex->lastToken == tokSym && lex->lastString[0] == delim);
 // 	});
 // 	if (!success)
-// 		return std::make_tuple(keyword, "", false);
+// 		return make_result(keyword, "", false);
 // 	if (lex->lastToken == tokSpace)
 // 		lex->gettok(); // Consume Space
 // 	std::tie(command, success) = lex->readUntil([&inQuote, delim](Parser * lex) {
@@ -865,14 +862,14 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineCodeHandler::handle(P
 // 		return (!inQuote && lex->lastToken == tokSym && lex->lastString[0] == delim);
 // 	});
 // 	if (!success)
-// 		return std::make_tuple(keyword, command, false);
+// 		return make_result(keyword, command, false);
 // 	lex->gettok(1);
 // 	// Valid
-// 	return std::make_tuple(keyword, command, true);
+// 	return make_result(keyword, command, true);
 // }
 
 std::unique_ptr<InlineHandler> InlineModifierHandler::createNew() {
-	return std::make_unique<InlineModifierHandler>();
+	return newSelf<InlineModifierHandler>();
 }
 
 std::string InlineModifierHandler::triggerChars() {
@@ -885,7 +882,7 @@ bool InlineModifierHandler::canHandle(Parser * lex) {
 		(lex->peektok() != tokSpace) && (lex->peektok() != tokNewline);
 }
 
-std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineModifierHandler::handle(Parser * lex) {
+InlineHandlerReturn InlineModifierHandler::handle(Parser * lex) {
 	
 	lex->gettok(1);
 	std::unique_ptr<ASTInlineText> content;
@@ -894,14 +891,14 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineModifierHandler::hand
 	
 	if (endOfLine) {
 		content->prependElement(std::make_unique<ASTPlainText>('['));
-		return std::make_tuple(std::move(content), true);
+		return make_result(content, true);
 	}
 
 	// Ended on indicator
 	if (lex->lastInt != 1) {
 		// Invalid, multiple closing chars
 		content->prependElement(std::make_unique<ASTPlainText>('['));
-		return std::make_tuple(std::move(content), true);
+		return make_result(content, true);
 	}
 	lex->gettok(); // Consume closing indicator
 
@@ -913,7 +910,7 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineModifierHandler::hand
 		// Can not possibly be valid
 		content->prependElement(std::make_unique<ASTPlainText>('['));
 		content->addElement(std::make_unique<ASTPlainText>(']'));
-		return std::make_tuple(std::move(content), true);
+		return make_result(content, true);
 	}
 
 	switch (lex->lastString[0]) {
@@ -926,18 +923,18 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineModifierHandler::hand
 				content->addElement(std::make_unique<ASTPlainText>("]("));
 				content->addElement(std::make_unique<ASTPlainText>(keyword));
 				content->addElement(std::make_unique<ASTPlainText>(command));
-				return std::make_tuple(std::move(content), true);
+				return make_result(content, true);
 			}
 			result = std::make_unique<ASTLink>(keyword, content);
 			result->addCommand(ASTCommand(command));
-			return std::make_tuple(std::move(result), true);
+			return make_result(result, true);
 		case '!':
 			lex->gettok(); // Consume !
 			if (lex->lastToken != tokSym || lex->lastString[0] != '(' || lex->lastInt != 1) {
 				content->prependElement(std::make_unique<ASTPlainText>('['));
 
 				content->addElement(std::make_unique<ASTPlainText>("]!"));
-				return std::make_tuple(std::move(content), true);
+				return make_result(std::move(content), true);
 			}
 			lex->gettok(); // Consume (
 			std::tie(keyword, command, success) = lex->parseLink(')');
@@ -947,18 +944,18 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineModifierHandler::hand
 				content->addElement(std::make_unique<ASTPlainText>("]!("));
 				content->addElement(std::make_unique<ASTPlainText>(keyword));
 				content->addElement(std::make_unique<ASTPlainText>(command));
-				return std::make_tuple(std::move(content), true);
+				return make_result(std::move(content), true);
 			}
 			result = std::make_unique<ASTImage>(keyword, content);
 			result->addCommand(ASTCommand(command));
-			return std::make_tuple(std::move(result), true);
+			return make_result(std::move(result), true);
 		case '^':
 			lex->gettok(); // Consume ^
 			if (lex->lastToken != tokSym || lex->lastString[0] != '(' || lex->lastInt != 1) {
 				content->prependElement(std::make_unique<ASTPlainText>('['));
 
 				content->addElement(std::make_unique<ASTPlainText>("]^"));
-				return std::make_tuple(std::move(content), true);
+				return make_result(std::move(content), true);
 			}
 			lex->gettok(); // Consume (
 			std::tie(keyword, command, success) = lex->parseLink(')');
@@ -968,18 +965,18 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineModifierHandler::hand
 				content->addElement(std::make_unique<ASTPlainText>("]^("));
 				content->addElement(std::make_unique<ASTPlainText>(keyword));
 				content->addElement(std::make_unique<ASTPlainText>(command));
-				return std::make_tuple(std::move(content), true);
+				return make_result(std::move(content), true);
 			}
 			result = std::make_unique<ASTFootnote>(keyword, content);
 			result->addCommand(ASTCommand(command));
-			return std::make_tuple(std::move(result), true);
+			return make_result(std::move(result), true);
 		case '#':
 			keyword = Notedown::makeId(content->literalText());
 			lex->gettok(); // Consume #
 			if (lex->lastToken != tokSym || lex->lastString[0] != '{' || lex->lastInt != 1) {
 				// Valid but no other specification
 				result = std::make_unique<ASTHeadingLink>(keyword, content);
-				return std::make_tuple(std::move(result), true);
+				return make_result(std::move(result), true);
 			}
 			lex->gettok(); // Consume (
 			std::tie(command, success) = lex->readUntil([&inQuote](Parser * lex) {
@@ -993,20 +990,20 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineModifierHandler::hand
 
 				content->addElement(std::make_unique<ASTPlainText>("]#{"));
 				content->addElement(std::make_unique<ASTPlainText>(command));
-				return std::make_tuple(std::move(content), true);
+				return make_result(std::move(content), true);
 			}
 			lex->gettok(1);
 			// Valid, URL, Command and Type populated
 			result = std::make_unique<ASTHeadingLink>(keyword, content);
 			result->addCommand(ASTCommand(command));
-			return std::make_tuple(std::move(result), true);
+			return make_result(std::move(result), true);
 		case '<':
 			lex->gettok(); // Consume <
 			if (lex->lastToken != tokSym || lex->lastString[0] != '%' || lex->lastInt != 1) {
 				content->prependElement(std::make_unique<ASTPlainText>('['));
 
 				content->addElement(std::make_unique<ASTPlainText>("]<"));
-				return std::make_tuple(std::move(content), true);
+				return make_result(std::move(content), true);
 			}
 			lex->gettok(); // Consume %
 			std::tie(keyword, command, success) = lex->parseLink('>');
@@ -1016,11 +1013,11 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineModifierHandler::hand
 				content->addElement(std::make_unique<ASTPlainText>("]<%"));
 				content->addElement(std::make_unique<ASTPlainText>(keyword));
 				content->addElement(std::make_unique<ASTPlainText>(command));
-				return std::make_tuple(std::move(content), true);
+				return make_result(std::move(content), true);
 			}
 			result = std::make_unique<ASTReplace>(keyword, content);
 			result->addCommand(ASTCommand(command));
-			return std::make_tuple(std::move(result), true);
+			return make_result(std::move(result), true);
 		case '{':
 			lex->gettok(); // Consume {
 			// Read Command line literally
@@ -1036,12 +1033,12 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineModifierHandler::hand
 
 				content->addElement(std::make_unique<ASTPlainText>("]{"));
 				content->addElement(std::make_unique<ASTPlainText>(command));
-				return std::make_tuple(std::move(content), true);
+				return make_result(std::move(content), true);
 			}
 			lex->gettok(1);
 			result = std::make_unique<ASTStyled>(keyword, content);
 			result->addCommand(ASTCommand(command));
-			return std::make_tuple(std::move(result), true);
+			return make_result(std::move(result), true);
 		default:
 			// Error, not valid
 			break;
@@ -1052,14 +1049,14 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineModifierHandler::hand
 	content->prependElement(std::make_unique<ASTPlainText>('['));
 	content->addElement(std::make_unique<ASTPlainText>("]"));
 
-	return std::make_tuple(std::move(content), true);
+	return make_result(std::move(content), true);
 }
 
 
 // ----- InlineSmileyHandler ----- //
 
 std::unique_ptr<InlineHandler> InlineSmileyHandler::createNew() {
-	return std::make_unique<InlineSmileyHandler>();
+	return newSelf<InlineSmileyHandler>();
 }
 
 std::string InlineSmileyHandler::triggerChars() {
@@ -1072,11 +1069,11 @@ bool InlineSmileyHandler::canHandle(Parser * lex) {
 		(lex->peektok() != tokSpace) && (lex->peektok() != tokNewline);
 }
 
-std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineSmileyHandler::handle(Parser * lex) {
+InlineHandlerReturn InlineSmileyHandler::handle(Parser * lex) {
 	
 	// If there are no indicators left open, e.g. **** -> *<firstContent>**<secondContent>*
 	if (lex->lastInt % 2 == 0)
-		return std::make_tuple(nullptr, true);
+		return make_result(nullptr, true);
 
 	lex->gettok(); // Consume opening indicator
 	std::unique_ptr<ASTInlineText> content;
@@ -1087,19 +1084,19 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineSmileyHandler::handle
 		// Ended on indicator
 		lex->gettok(); // Consume closing indicator
 		if (content != nullptr)
-			return std::make_tuple(std::make_unique<ASTEmoji>(content->literalText()), true);
-		return std::make_tuple(nullptr, true);
+			return make_result(std::make_unique<ASTEmoji>(content->literalText()), true);
+		return make_result(nullptr, true);
 	}
 
 	content->prependElement(std::make_unique<ASTPlainText>(':'));
 
-	return std::make_tuple(std::move(content), true);
+	return make_result(std::move(content), true);
 }
 
 // ----- InlineCommandHandler ----- //
 
 std::unique_ptr<InlineHandler> InlineCommandHandler::createNew() {
-	return std::make_unique<InlineCommandHandler>();
+	return newSelf<InlineCommandHandler>();
 }
 
 std::string InlineCommandHandler::triggerChars() {
@@ -1114,7 +1111,7 @@ bool InlineCommandHandler::canHandle(Parser * lex) {
 		(lex->peektok() != tokEOF);
 }
 
-std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineCommandHandler::handle(Parser * lex) {
+InlineHandlerReturn InlineCommandHandler::handle(Parser * lex) {
 	lex->gettok(); // Consume {
 
 	std::string command;
@@ -1133,10 +1130,67 @@ std::tuple<std::unique_ptr<_ASTInlineElement>, bool> InlineCommandHandler::handl
 		// No closing bracket, surround read content with "[content]{command"
 		content->addElement(std::make_unique<ASTPlainText>('{'));
 		content->addElement(std::make_unique<ASTPlainText>(command));
-		return std::make_tuple(std::move(content), true);
+		return make_result(std::move(content), true);
 	}
 	lex->gettok(1); // Consume closing char
 	std::unique_ptr<ASTCommandContainer> result = std::make_unique<ASTCommandContainer>();
 	result->addCommand(ASTCommand(command));
-	return std::make_tuple(std::move(result), true);
+	return make_result(std::move(result), true);
+}
+
+// ----- InlineTaskHandler ----- //
+
+std::unique_ptr<InlineHandler> InlineTaskHandler::createNew() {
+	return newSelf<InlineTaskHandler>();
+}
+
+std::string InlineTaskHandler::triggerChars() {
+	return "[]";
+}
+
+bool InlineTaskHandler::canHandle(Parser * lex) {
+	return (lex->lastToken == tokSym) &&
+		(lex->lastString[0] == '[') &&
+		(lex->lastInt == 1) &&
+		(
+			(lex->peektok() == tokSpace) ||
+			(
+				(lex->peektok() == tokText) &&
+				(
+					(lex->peekchar() == 'X') || 
+					(lex->peekchar() == 'x')
+				)
+			) ||
+			(
+				(lex->peektok() == tokSym) &&
+				(lex->peekchar() == ']')
+			)
+		);
+}
+
+InlineHandlerReturn InlineTaskHandler::handle(Parser * lex) {
+	lex->gettok(); // Consume [
+	if (lex->lastToken == tokSpace && lex->lastInt == 1) {
+		lex->gettok(); // Consume Space
+		if (lex->lastToken == tokSym && lex->lastInt == 1 && lex->lastString[0] == ']' && lex->peektok() == tokSpace) {
+			// Valid
+			lex->gettok(); // Consume ]
+			return make_result(std::make_unique<ASTTask>(' '), true);
+		}
+	}
+	else if (lex->lastToken == tokSym && lex->lastInt == 1 && lex->lastString[0] == ']' && lex->peektok() == tokSpace) {
+		// Valid
+		lex->gettok(); // Consume ]
+		return make_result(std::make_unique<ASTTask>(' '), true);
+	}
+	else if (lex->lastToken == tokText && (lex->lastString == "X" || lex->lastString == "x")) {
+		lex->gettok(); // Consume x
+		char checked = lex->lastString[0];
+		if (lex->lastToken == tokSym && lex->lastInt == 1 && lex->lastString[0] == ']' && lex->peektok() == tokSpace) {
+			// Valid
+			lex->gettok(); // Consume ]
+			return make_result(std::make_unique<ASTTask>(checked), true);
+		}
+	}
+	return handler_error;
 }

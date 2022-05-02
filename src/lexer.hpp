@@ -11,17 +11,6 @@
 #include "notedown-compiler.hpp"
 #include "notedown-templates.hpp"
 
-enum Token : int {
-	
-	tokEOF = -1, // End of File
-	tokText = -2, // lastString contains text
-	tokNumber = -3, // lastInt contains number, lastString contains string read (reads <Number>.)
-	tokSpace = -4, // lastString contains ' ', lastInt contains amount of spaces
-	tokNewline = -5, // Newline Character read (\n)
-	tokSym = -6, // Indicates formatting Symbol, lastString contains it, lastInt contains amount
-	_tokEscape = -7, // Used internally for escape sequences. Will never be the state of lastToken after gettok()
-};
-
 /*
 	Wrapper class for creating an AST
 */
@@ -31,58 +20,48 @@ protected:
 
 	std::istream * input;
 
-	// std::unordered_map<std::string, size_t> handlerAlias;
-	// std::vector<std::unique_ptr<ParserHandler>> handlerList;
-
-	// std::unordered_set<int> symbols;
-
-	// std::unordered_map<std::string, size_t> inlineHandlerAlias;
-	// std::vector<std::unique_ptr<InlineHandler>> inlineHandlerList;
-
 	std::unique_ptr<ParserHandler> _lastHandler = nullptr;
 	std::unique_ptr<ASTDocument> document = nullptr;
 
 	int _lastChar = 0;
 
-	std::vector<std::unique_ptr<ASTDocument>> documents;
-
 	std::unique_ptr<ASTPlainText> _parsePlainText();
 	std::unique_ptr<_ASTInlineElement> _parseLine(bool allowLb = true);
-
-	void puttok();
-
-	// void addSymbols(std::string str);
-
+	TimeSnap createTimesnap();
+	void revert(TimeSnap snap);
 public:
-
 	std::string lastString;
 	int lastInt;
 	Token lastToken;
 
-
 	Parser(NotedownCompiler * compiler, std::istream * input) : compiler(compiler), input(input) {}
 	~Parser() = default;
 
+	/*
+		Gets the token chr would give
+	*/
 	Token peektok(int chr);
-	Token peektok();
-
-	int peekchar();
-
-	Token gettok();
-	Token gettok(int amount);
-	void getchar();
-	int currchar();
-
-	std::string escaped(int chr);
 
 	/*
-		@param allowRange Whether delimiter is allowed if in ""
-		@param delimiter Symbol to end. Will consume delimiter
-		@return Unformatted String and whether it ended because of a newline
+		Gets the token the next char in input belongs to
 	*/
-	std::tuple<std::string, bool> extractText(bool allowRange, std::string delimiter);
+	Token peektok();
 
-	std::tuple<std::string, std::string, bool> parseLink(char delim);
+	/*
+		Gets the next char in input
+	*/
+	int peekchar();
+
+	/*
+		Consumes the current Token and loads the next one
+	*/
+	Token gettok();
+
+	/*
+		Consumes amount Tokens and loads the next one if amount >= lastInt
+		If lastToken is not [tokSpace, tokSym] this is identical to gettok()
+	*/
+	Token gettok(int amount);
 
 	/*
 		Reads Text literally (no Sym or Space collapsing) until condition is met or EOF/EOL occured
@@ -92,11 +71,37 @@ public:
 	*/
 	std::tuple<std::string, bool> readUntil(std::function<bool(Parser *)> condition);
 
+	/**
+		Reads Text of scheme <url> <text> until delim is met or EOF/EOL occured.
+		<text> allows quoted text where delim is allowed.
+		Consumes ending token.
+		@param delim Character to end operation on, normally closing brackets
+		@return [ url, text, success] where success indicates if it ended on delim (=true) or EOL/EOF (=false)
+	*/
+	std::tuple<std::string, std::string, bool> parseLink(char delim);
+
+
 	std::unique_ptr<ParserHandler> findNextHandler();
 	std::unique_ptr<ParserHandler> findNextHandler(std::string name);
 
+	/*
+		Finds the Handler after h that can handle the current Situation
+		@param h The handler that failed, if nullptr, this function is equivalent to findNextHandler()
+		@result A Handler that can handle the situation or nullptr if none of them can 
+	*/
+	std::unique_ptr<ParserHandler> findHandlerAfter(std::unique_ptr<ParserHandler> & h);
+
 	std::unique_ptr<InlineHandler> findNextInlineHandler();
 	std::unique_ptr<InlineHandler> findNextInlineHandler(std::string name);
+	
+	/*
+		Finds the Handler after h that can handle the current Situation
+		@param h The handler that failed, if nullptr, this function is equivalent to findNextInlineHandler()
+		@result A Handler that can handle the situation or nullptr if none of them can 
+	*/
+	std::unique_ptr<InlineHandler> findInlineHandlerAfter(std::unique_ptr<InlineHandler> & h);
+
+	// void rollBack(std::unique_ptr<ParserHandler> & lastHandler, TimeSnap & snap);
 
 	bool addToDocument(std::unique_ptr<_ASTElement> element);
 
@@ -111,24 +116,6 @@ public:
 	std::tuple<std::unique_ptr<ASTInlineText>, bool> parseText(
 		bool allowLb = true, bool unknownAsText = true, bool allowInlineStyling = true, int symReturn = 0);
 
-	// std::tuple<std::unique_ptr<ASTInlineText>, bool> parseText(allowLb, unknownAsText, allowInlineStyling, inlineSymReturn, symReturn)
-
-	// template<class Cl>
-	// bool addHandler(std::string name) {
-	// 	return addHandler(name, std::make_unique<Cl>());
-	// }
-
-	// bool addHandler(std::string name, std::unique_ptr<ParserHandler> handler);
-	// bool addHandlerAlias(std::string alias, std::string name);
-
-	// template<class Cl>
-	// bool addInlineHandler(std::string name) {
-	// 	return addInlineHandler(name, std::make_unique<Cl>());
-	// }
-
-	// bool addInlineHandler(std::string name, std::unique_ptr<InlineHandler> handler);
-	// bool addInlineHandlerAlias(std::string alias, std::string name);
-
 	/*
 		Has consumed newline if second return value is true.
 		@returns unique_ptr : Element to insert or nullptr. bool : Whether the current Handler was finished.
@@ -139,9 +126,4 @@ public:
 	void createDocument();
 	void parseDocument();
 	std::unique_ptr<ASTDocument> & getDocument();
-
-	// bool parseFile(std::string filename);
-	// bool parseStream(std::istream & stream);
-
-	// void addDefaultHandlers();
 };

@@ -365,6 +365,10 @@ void _ASTElement::_resolve(ASTProcess step, ASTRequestFunc request, ASTRequestMo
 	commands.resolve(request);
 }
 
+void _ASTElement::_identify(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
+
+}
+
 void _ASTElement::_execute(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
 	commands.execute(this, step, modFunc);
 }
@@ -387,6 +391,9 @@ void _ASTElement::process(ASTProcess step, ASTRequestFunc request, ASTRequestMod
 		break;
 	case procResolve:
 		_resolve(step, request, modFunc);
+		break;
+	case procIdentify:
+		_identify(step, request, modFunc);
 		break;
 	case procExecutePrep:
 	case procExecuteMain:
@@ -807,6 +814,52 @@ std::string ASTStyled::getHtml(ASTRequestFunc request) {
 	return html;
 }
 
+// ----- ASTTask ----- //
+
+void ASTTask::_resolve(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
+	// Structure has to be the following:
+	// ASTUnorderedList
+	//   ASTListElement
+	//     ASTParagraph
+	//       ASTInlineText
+	//         [ASTTask]
+	valid = false;
+
+	ASTInlineText * text = dynamic_cast<ASTInlineText *>(parent);
+	if (text == nullptr) return;
+	if (text->elements[0].get() != this) return;
+
+	ASTParagraph * par = dynamic_cast<ASTParagraph *>(text->parent);
+	if (par == nullptr) return;
+	if (par->elements[0].get() != text) return;
+	
+	ASTListElement * elem = dynamic_cast<ASTListElement *>(par->parent);
+	if (elem == nullptr) return;
+	if (elem->elements[0].get() != par) return;
+
+	ASTUnorderedList * list = dynamic_cast<ASTUnorderedList *>(elem->parent);
+	if (list == nullptr) return;
+
+	valid = true;
+}
+
+bool ASTTask::isEmpty() {
+	return false;
+}
+
+std::string ASTTask::getHtml(ASTRequestFunc request) {
+	if (!valid)
+		return "[" + std::string(1, checked) + "]";
+
+	std::string html = "<input";
+	commands.attributes["type"] = "checkbox";
+	if (checked == 'X' || checked == 'x')
+		commands.attributes["checked"] = "";
+	html += commands.constructHeader(request);
+	html += ">";
+	return html;
+}
+
 
 // -------------------------------------- //
 // --------- MULTILINE ELEMENTS --------- //
@@ -877,7 +930,9 @@ void ASTHeading::_consume(ASTProcess step, ASTRequestFunc request, ASTRequestMod
 
 	if (commands.id.empty())
 		commands.id = Notedown::makeId(content->literalText());
+}
 
+void ASTHeading::_identify(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
 	ASTDocument * doc = dynamic_cast<ASTDocument *>(getDocument());
 	if (doc == nullptr)
 		return;

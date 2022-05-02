@@ -67,6 +67,7 @@ bool NotedownCompiler::addHandler(std::string name, std::unique_ptr<ParserHandle
 		return false;
 	
 	addSymbols(handler->triggerChars());
+	handler->id = handlerList.size();
 	handlerList.push_back(std::move(handler));
 	return handlerAlias.emplace(name, handlerList.size() - 1).second;
 }
@@ -83,6 +84,7 @@ bool NotedownCompiler::addInlineHandler(std::string name, std::unique_ptr<Inline
 		return 0;
 	
 	addSymbols(handler->triggerChars());
+	handler->id = inlineHandlerList.size();
 	inlineHandlerList.push_back(std::move(handler));
 	return inlineHandlerAlias.emplace(name, inlineHandlerList.size() - 1).second;
 }
@@ -143,7 +145,7 @@ void NotedownCompiler::addFile(std::string filename) {
 }
 
 void NotedownCompiler::addFromFile(std::string filename, size_t order) {
-	std::ifstream file(filename, std::ios::in);
+	std::ifstream file(filename, std::ios::in | std::ios::binary);
 	if (!file.is_open()) {
 		std::cerr << "File could not be opened: " << filename << std::endl;
 		return;
@@ -188,12 +190,16 @@ void NotedownCompiler::prepareAST() {
 		e->process(procResolve, 
 			std::bind(&NotedownCompiler::handleRequest, this, std::placeholders::_1), 
 			std::bind(&NotedownCompiler::handleModRequest, this, std::placeholders::_1));
-		for (auto & p : e->iddef)
-			iddef[p.first] = p.second;
 	}
 
 	for (auto & e : documents) {
 		e->process(procConsume, 
+			std::bind(&NotedownCompiler::handleRequest, this, std::placeholders::_1), 
+			std::bind(&NotedownCompiler::handleModRequest, this, std::placeholders::_1));
+	}
+
+	for (auto & e : documents) {
+		e->process(procIdentify, 
 			std::bind(&NotedownCompiler::handleRequest, this, std::placeholders::_1), 
 			std::bind(&NotedownCompiler::handleModRequest, this, std::placeholders::_1));
 		for (auto & p : e->iddef)
