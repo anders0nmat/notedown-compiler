@@ -216,20 +216,21 @@ std::string ASTCommand::toJson() {
 }
 
 void ASTCommand::merge(ASTCommand & other) {
-	id = other.id;
-	classes.insert(other.classes.begin(), other.classes.end());
-	title = other.title;
-	for (auto & p : other.attributes)
-		attributes[p.first] = p.second;
-	for (auto & p : other.css)
-		css[p.first] = p.second;
-	genFunction = other.genFunction;
-	for (auto & e : other.modFunctions)
-		modFunctions.push_back(e);
-	for (auto & p : other.flags)
-		flags[p.first] = p.second;
-	for (auto & e : other.refCommands)
-		refCommands.push_back(e);
+	// id = other.id;
+	// classes.insert(other.classes.begin(), other.classes.end());
+	// title = other.title;
+	// for (auto & p : other.attributes)
+	// 	attributes[p.first] = p.second;
+	// for (auto & p : other.css)
+	// 	css[p.first] = p.second;
+	// genFunction = other.genFunction;
+	// for (auto & e : other.modFunctions)
+	// 	modFunctions.push_back(e);
+	// for (auto & p : other.flags)
+	// 	flags[p.first] = p.second;
+	// for (auto & e : other.refCommands)
+	// 	refCommands.push_back(e);
+	merge(std::move(other));
 }
 
 void ASTCommand::merge(ASTCommand && other) {
@@ -269,22 +270,23 @@ void ASTCommand::integrate(ASTCommand && other) {
 }
 
 void ASTCommand::integrate(ASTCommand & other) {
-	if (id.empty())
-		id = other.id;
-	classes.insert(other.classes.begin(), other.classes.end());
-	if (title.empty())
-		title = other.title;
-	for (auto & p : other.attributes)
-		attributes.insert(p);
-	css.insert(other.css.begin(), other.css.end());
-	if (genFunction.first.empty())
-		genFunction = other.genFunction;
-	for (auto & e : other.modFunctions)
-		modFunctions.push_back(e);
-	for (auto & p : other.flags)
-		flags.insert(p);
-	for (auto & e : other.refCommands)
-		refCommands.push_back(e);
+	integrate(std::move(other));
+	// if (id.empty())
+	// 	id = other.id;
+	// classes.insert(other.classes.begin(), other.classes.end());
+	// if (title.empty())
+	// 	title = other.title;
+	// for (auto & p : other.attributes)
+	// 	attributes.insert(p);
+	// css.insert(other.css.begin(), other.css.end());
+	// if (genFunction.first.empty())
+	// 	genFunction = other.genFunction;
+	// for (auto & e : other.modFunctions)
+	// 	modFunctions.push_back(e);
+	// for (auto & p : other.flags)
+	// 	flags.insert(p);
+	// for (auto & e : other.refCommands)
+	// 	refCommands.push_back(e);
 }
 
 void ASTCommand::resolve(ASTRequestFunc request) {
@@ -353,21 +355,14 @@ std::string _ASTElement::cmdJson() {
 	return "\"command\": " + commands.toJson();
 }
 
-void _ASTElement::_consume(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
-
-}
-
-void _ASTElement::_register(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
-
-}
+void _ASTElement::_consume(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {}
+void _ASTElement::_register(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {}
 
 void _ASTElement::_resolve(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
 	commands.resolve(request);
 }
 
-void _ASTElement::_identify(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
-
-}
+void _ASTElement::_identify(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {}
 
 void _ASTElement::_execute(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
 	commands.execute(this, step, modFunc);
@@ -415,7 +410,6 @@ std::string _ASTElement::toJson() {
 bool _ASTElement::isEmpty() {
 	return true;
 }
-
 
 bool _ASTElement::canConsume() {
 	return isEmpty();
@@ -750,9 +744,9 @@ void ASTFootnote::_resolve(ASTProcess step, ASTRequestFunc request, ASTRequestMo
 std::string ASTFootnote::getHtml(ASTRequestFunc request) {
 	std::string html = "<a";
 	commands.attributes["href"] = "#" + url;
-	commands.addClass("footnote");
+	commands.addClass("nd-footnote");
 	if (request("^" + url) == nullptr)
-		commands.addClass("missing");
+		commands.addClass("nd-missing");
 	html += commands.constructHeader(request);
 	html += ">";
 	if (content->isEmpty())
@@ -768,9 +762,9 @@ std::string ASTFootnote::getHtml(ASTRequestFunc request) {
 std::string ASTHeadingLink::getHtml(ASTRequestFunc request) {
 	std::string html = "<a";
 	commands.attributes["href"] = "#" + url;
-	commands.addClass("h-link");
+	commands.addClass("nd-h-link");
 	if (request("#" + url) == nullptr)
-		commands.addClass("missing");
+		commands.addClass("nd-missing");
 	html += commands.constructHeader(request);
 	html += ">";
 	html += content->getHtml(request);
@@ -789,7 +783,7 @@ std::string ASTReplace::getHtml(ASTRequestFunc request) {
 
 	std::string html = "<div";
 	if (replContent == nullptr)
-		commands.addClass("missing");
+		commands.addClass("nd-missing");
 	html += commands.constructHeader(request);
 	html += ">";
 
@@ -841,6 +835,7 @@ void ASTTask::_resolve(ASTProcess step, ASTRequestFunc request, ASTRequestModFun
 	if (list == nullptr) return;
 
 	valid = true;
+	elem->commands.addClass("nd-task-list-item");
 }
 
 bool ASTTask::isEmpty() {
@@ -891,10 +886,6 @@ bool ASTIdDefinition::isEmpty() {
 
 bool ASTIdDefinition::canConsume() {
 	return false;
-}
-
-void ASTIdDefinition::registerNow() {
-	
 }
 
 std::string ASTIdDefinition::toJson() {
@@ -1014,7 +1005,7 @@ std::string ASTBlockquote::toJson() {
 std::string ASTBlockquote::getHtml(ASTRequestFunc request) {
 	std::string html = "<blockquote";
 	if (centered)
-		commands.addClass("center");
+		commands.addClass("nd-center");
 	html += commands.constructHeader(request);
 	html += ">\n";
 	html += _ASTBlockElement::getHtml(request);
@@ -1137,7 +1128,7 @@ std::string ASTInfoBlock::getHtml(ASTRequestFunc request) {
 	std::string html = "<blockquote";
 	commands.addClass(type);
 	if (sym)
-		commands.addClass("sym");
+		commands.addClass("nd-sym");
 	html += commands.constructHeader(request);
 	html += ">\n";
 	html += _ASTBlockElement::getHtml(request);
@@ -1175,7 +1166,7 @@ std::string ASTFootnoteBlock::toJson() {
 
 std::string ASTFootnoteBlock::getHtml(ASTRequestFunc request) {
 	std::string html = "<div";
-	commands.addClass("footnote");
+	commands.addClass("nd-footnote");
 	if (!id.empty())
 		commands.id = id;
 

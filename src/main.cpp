@@ -236,9 +236,6 @@ int main(int argc, const char *argv[]) {
 			exe_path + "/emoji_lut/unicode-14/symbols",
 			exe_path + "/emoji_lut/unicode-14/travel-places"
 		});
-
-
-	args["-nom"] = "";
 	
 
 	// ------------------------------ //

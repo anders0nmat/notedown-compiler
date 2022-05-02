@@ -42,10 +42,8 @@ inline Token Parser::peektok() {
 }
 
 Token Parser::gettok() {
-	// std::cout << "Old Pos: " << input->tellg() << std::endl;
-	if (_lastChar == 0) {
+	if (_lastChar == 0)
 		_lastChar = input->get();
-	}
 
 	lastToken = peektok();
 
@@ -74,7 +72,6 @@ Token Parser::gettok() {
 		lastString = _lastChar;
 		while (peektok(_lastChar = input->get()) == tokText)
 			lastString += _lastChar;
-		// std::cout << "New Pos: " << input->tellg() << std::endl;
 		return lastToken;
 	case tokNumber:
 		lastString = _lastChar;
@@ -85,22 +82,20 @@ Token Parser::gettok() {
 			_lastChar = input->get();
 		}
 		lastInt = std::stoi(lastString);
-		// std::cout << "New Pos: " << input->tellg() << std::endl;
 		return lastToken;
 	case tokSpace:
 	case tokSym:
-		// lastInt = 1;
-		// lastString = _lastChar;
-		// while ((_lastChar = input->get()) == lastString.front()) 
-		// 	lastInt++;
-
-		lastInt = 0;
+		lastInt = 1;
 		lastString = _lastChar;
-		while (_lastChar == lastString.front()) {
-			_lastChar = input->get();
+		while ((_lastChar = input->get()) == lastString.front()) 
 			lastInt++;
-		}
-		// std::cout << "New Pos: " << input->tellg() << std::endl;
+
+		// lastInt = 0;
+		// lastString = _lastChar;
+		// while (_lastChar == lastString.front()) {
+		// 	_lastChar = input->get();
+		// 	lastInt++;
+		// }
 		return lastToken;
 	case tokNewline:
 		if (_lastChar == '\r')
@@ -110,7 +105,6 @@ Token Parser::gettok() {
 		return lastToken;
 	default:
 		_lastChar = input->get(); // Consume current char
-		// std::cout << "New Pos: " << input->tellg() << std::endl;
 		return lastToken;
 	}
 }
@@ -385,9 +379,7 @@ unique_ptr<_ASTInlineElement> Parser::_parseLine(bool allowLb) {
 		case tokSpace:
 			if (allowLb && lastToken == tokSpace && lastInt >= 2 && peektok() == tokNewline) { 
 				// Forced Linebreak (<Space> <Space> <Linebreak>)
-				//gettok(); // Consume Spaces
-				//return std::make_unique<ASTLinebreak>();
-				return nullptr; // Caller handles that case now
+				return nullptr;
 			}
 			else if (peektok() == tokText) {
 				// Space and then text (e.g. after inline styling)

@@ -117,6 +117,7 @@ public:
 	 * Adds an lookup table for emoji shortcodes
 	 */
 	void addEmojiLUT(std::string filename);
+
 	/**
 	 * Adds a list of lookup tables for emoji shortcodes.
 	 * @param filenames List of valid filenames
@@ -141,6 +142,7 @@ public:
 	 * @param filename A valid filename containing Notedown Syntax
 	 */
 	void addFile(std::string filename);
+
 	/**
 	 * Parse filenames and add to document list (in the order specified).
 	 * @param filenames List of valid filenames
@@ -148,13 +150,17 @@ public:
 	 */
 	void addFile(std::vector<std::string> & filenames, bool multithread = true);
 
+	/**
+	 * Processes the AST. Goes through several steps to resolve dependencies and execute commands
+	 */
 	void prepareAST();
 
-	/*
-		Compiles all documents to html.
-		@return Pointer to stringbuf, valid until next call to a getHtml-Method
-	*/
+	/**
+	 * Compiles all documents to html.
+	 * @return Pointer to stringbuf, valid until next call to a getHtml-Method
+	 */
 	std::stringbuf * getRawHtml();
+
 	/**
 	 * Compiles specified document to html
 	 * @param index Index of document (identical to order added)
@@ -169,6 +175,9 @@ public:
 	 */
 	std::unique_ptr<ASTDocument> & getDocument(size_t index);
 
+	/**
+	 * Returns the amount of documents (corresponds with loaded files)
+	 */
 	size_t documentCount();
 };
 

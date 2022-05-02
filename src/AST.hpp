@@ -116,7 +116,6 @@ public:
 
 	virtual _ASTElement * getDocument();
 	virtual _ASTElement * containingElement();
-	virtual void registerNow() {}
 
 	virtual void process(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc);
 	
@@ -155,11 +154,6 @@ public:
 		for (auto & e : elements)
 			e->process(step, request, modFunc);
 		_ASTElement::process(step, request, modFunc);
-	}
-
-	void registerNow() override {
-		for (auto & e : elements)
-			e->registerNow();
 	}
 	
 	bool isEmpty() override {
@@ -541,8 +535,6 @@ public:
 
 	bool isEmpty() override;
 	bool canConsume() override;
-
-	void registerNow();
 
 	std::string toJson() override;
 
