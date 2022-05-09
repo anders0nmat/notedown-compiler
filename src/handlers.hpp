@@ -109,10 +109,7 @@ public:
 
 class BlockquoteHandler : public BlockHandler<ASTBlockquote> {
 protected:
-	
 	bool centered;
-	char indentStyle = 0;
-
 public:
 
 	BlockquoteHandler() {}

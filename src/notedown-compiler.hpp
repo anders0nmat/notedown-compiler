@@ -44,8 +44,6 @@ protected:
 
 	void addFromFile(std::string filename, size_t order);
 
-	void getIdDef();
-
 	_ASTElement * handleRequest(std::string request);
 	ASTModFunc handleModRequest(std::string request);
 public:

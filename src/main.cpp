@@ -134,6 +134,8 @@ const std::string CONSOLE_HELP =
 "\t-quiet\t: Disables debug CLI Output\n"
 "\t-oc\n"
 "\t-outconsole\t: Result will be outputted to console\n"
+"\t-r\n"
+"\t-raw\t: Output only raw html, does not include html-neccessary headers"
 ;
 
 std::vector<std::string> files, styles, emoji;
@@ -332,29 +334,34 @@ int main(int argc, const char *argv[]) {
 	}
 	
 
-	*outBuf << "<!DOCTYPE html>\n" << "<html>\n" << "<head>\n";
-	*outBuf << "<meta charset=\"utf-8\">\n";
+	if (!flagSet({ "-r", "-raw" })) {
+		*outBuf << "<!DOCTYPE html>\n" << "<html>\n" << "<head>\n";
+		*outBuf << "<meta charset=\"utf-8\">\n";
 
-	for (auto & style : styles) {
-		if (flagSet({ "-sd", "-styledoc", "-styledocument" })) {
-			std::ifstream css(style);
-			if (!css.is_open()) {
-				std::cerr << "Style could not be opened: " << style << std::endl;
-				continue;
+		for (auto & style : styles) {
+			if (flagSet({ "-sd", "-styledoc", "-styledocument" })) {
+				std::ifstream css(style);
+				if (!css.is_open()) {
+					std::cerr << "Style could not be opened: " << style << std::endl;
+					continue;
+				}
+				*outBuf << "<!-- " << style << " -->\n";
+				*outBuf << "<style>\n";
+				*outBuf << css.rdbuf();
+				*outBuf << "</style>\n";
+
 			}
-			*outBuf << "<!-- " << style << " -->\n";
-			*outBuf << "<style>\n";
-			*outBuf << css.rdbuf();
-			*outBuf << "</style>\n";
-
+			else
+				*outBuf << "<link rel=\"stylesheet\" href=\"" << style << "\">\n";
 		}
-		else
-			*outBuf << "<link rel=\"stylesheet\" href=\"" << style << "\">\n";
+
+		*outBuf << "</head>\n" << "<body>\n";
 	}
 
-	*outBuf << "</head>\n" << "<body>\n";
 	*outBuf << compiler.getRawHtml();
-	*outBuf << "</body>\n" << "</html>\n";
+
+	if (!flagSet({ "-r", "-raw" }))
+		*outBuf << "</body>\n" << "</html>\n";
 	
 	html.close();
 

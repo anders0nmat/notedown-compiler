@@ -141,12 +141,14 @@ code {
 	padding-inline: 0.4em;
 	display: inline-block;
 	color: inherit;
+	white-space: pre-wrap;
 }
 
 pre > code {
 	width:100%;
 	tab-size: 4;
 	padding: 0.8em 1.2em;
+	white-space: initial;
 }
 
 blockquote {

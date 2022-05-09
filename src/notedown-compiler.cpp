@@ -230,14 +230,6 @@ void NotedownCompiler::prepareAST() {
 	}
 }
 
-void NotedownCompiler::getIdDef() {
-	for (auto & doc : documents) {
-		doc->registerNow();
-		for (auto & p : doc->iddef)
-			iddef[p.first] = p.second;
-	}
-}
-
 _ASTElement * NotedownCompiler::handleRequest(std::string request) {
 	if (request[0] == ':') {
 		auto it = emojis.find(request.substr(1));
