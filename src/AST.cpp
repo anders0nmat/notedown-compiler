@@ -2,6 +2,7 @@
 
 #include "notedown-compiler.hpp"
 #include "AST.hpp"
+#include "highlighter.hpp"
 
 // ----- ASTCommand ----- //
 
@@ -75,7 +76,7 @@ ASTCommand::ASTCommand(std::string command) {
 			continue;
 		}
 		if (e[0] == '.' && e.length() > 1) {
-			std::vector cls(splitAt(e, '.'));
+			auto cls(splitAt(e, '.'));
 			for (auto & c : cls) {
 				if (strisiden(c))
 					classes.insert(c);
@@ -916,7 +917,7 @@ std::string ASTIdDefinition::getHtml(ASTRequestFunc request) {
 // ----- ASTHeading ----- //
 
 void ASTHeading::_consume(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
-	if (content->isEmpty())
+	if (content != nullptr && content->isEmpty())
 		commands.integrate(content->commands);
 
 	if (commands.id.empty())
@@ -931,7 +932,8 @@ void ASTHeading::_identify(ASTProcess step, ASTRequestFunc request, ASTRequestMo
 }
 
 void ASTHeading::process(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
-	content->process(step, request, modFunc);
+	if (content != nullptr)
+		content->process(step, request, modFunc);
 	_ASTElement::process(step, request, modFunc);
 }
 
@@ -955,7 +957,8 @@ std::string ASTHeading::getHtml(ASTRequestFunc request) {
 	std::string html = "<h" + std::to_string(level);
 	html += commands.constructHeader(request);
 	html += ">";
-	html += content->getHtml(request);
+	if (content != nullptr)
+		html += content->getHtml(request);
 	html += "</h" + std::to_string(level) + ">";
 	return html;
 }
@@ -1066,9 +1069,23 @@ std::string ASTOrderedList::getHtml(ASTRequestFunc request) {
 
 // ----- ASTCodeBlock ----- //
 
+void ASTCodeBlock::_register(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
+	// if (command != nullptr) {
+	// 	commands = command->commands;
+	// 	command->commands = ASTCommand();
+	// }
+}
+
+void ASTCodeBlock::process(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
+	if (command != nullptr)
+		command->process(step, request, modFunc);
+	_ASTBlockElement::process(step, request, modFunc);
+}
+
 void ASTCodeBlock::addCommand(std::unique_ptr<ASTInlineText> & e) {
 	command = std::move(e);
-	command->parent = this;
+	if (this->command != nullptr)
+		command->parent = this;
 }
 
 std::string ASTCodeBlock::toJson() {
@@ -1094,10 +1111,40 @@ std::string ASTCodeBlock::getHtml(ASTRequestFunc request) {
 	std::string html = "<pre><code";
 	html += commands.constructHeader(request);
 	html += ">";
+
+	ASTContainerSyntaxHighlight * lang_handler = dynamic_cast<ASTContainerSyntaxHighlight*>(request("~" + lang));
+	if (lang_handler != nullptr) {
+		std::string raw;
+		_ASTInlineElement * text;
+		ASTInlineText * container;
+		for (size_t i = 0; i < elements.size(); i++) {
+			text = dynamic_cast<_ASTInlineElement*>(elements[i].get());
+			if (text == nullptr) continue;
+			
+			raw = text->literalText();
+			elements[i] = std::make_unique<ASTInlineText>();
+			container = dynamic_cast<ASTInlineText*>(elements[i].get());
+			lang_handler->engine->highlight_callback(raw, lang, [container](std::string output, const std::string & type){
+				if (type.empty()) {
+					container->addElement(std::make_unique<ASTPlainText>(output));
+				}
+				else {
+					std::unique_ptr<ASTStyled> style = std::make_unique<ASTStyled>();
+					style->commands.addClass("nd-syntax-" + type);
+					style->content = std::make_unique<ASTInlineText>();
+					style->content->parent = style->content.get();
+					style->content->addElement(std::make_unique<ASTPlainText>(output));
+					container->addElement(std::move(style));
+				}
+			});
+		}
+	}
+
 	for (auto & e : elements)
 		html += e->getHtml(request) + "\n";
 	if (elements.size() > 0)
 		html.erase(std::prev(html.end()));
+	
 	html += "</code></pre>";
 	return html;
 }
@@ -1180,7 +1227,8 @@ std::string ASTFootnoteBlock::getHtml(ASTRequestFunc request) {
 // ----- ASTCollapseBlock ----- //
 
 void ASTCollapseBlock::process(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) {
-	summary->process(step, request, modFunc);
+	if (summary != nullptr)
+		summary->process(step, request, modFunc);
 	_ASTBlockElement::process(step, request, modFunc);
 }
 

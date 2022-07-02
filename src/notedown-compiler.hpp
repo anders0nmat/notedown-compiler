@@ -20,7 +20,7 @@
 class NotedownCompiler {
 protected:
 	friend class Parser;
-
+	
 	std::mutex mtx_documents;
 	std::vector<std::unique_ptr<ASTDocument>> documents;
 
@@ -38,6 +38,9 @@ protected:
 	std::unordered_map<std::string, std::string> emojis;
 	ASTPlainText temp_emoji;
 
+	HighlighterEngine syntax_highlighter;
+	std::unique_ptr<ASTContainerSyntaxHighlight> syntax_highlighter_ptr;
+
 	std::stringbuf buf;
 	
 	void addSymbols(std::string str);
@@ -48,7 +51,7 @@ protected:
 	ASTModFunc handleModRequest(std::string request);
 public:
 	
-	NotedownCompiler() {}
+	NotedownCompiler() : syntax_highlighter_ptr(std::make_unique<ASTContainerSyntaxHighlight>(&syntax_highlighter)) {}
 
 	/**
 	 * Constructs the specified handler 
@@ -122,6 +125,13 @@ public:
 	 * @param multithread Whether each file should be parsed with a separate thread (can speed up compilation)
 	 */
 	void addEmojiLUT(std::vector<std::string> filenames);
+
+	/**
+	 * Adds a language syntax file
+	 * @param filename Path(s) to file
+	 */
+	void addSyntax(std::string filename);
+	void addSyntax(std::vector<std::string> filenames);
 
 	/**
 	 * Adds a modifying function to use in command blocks

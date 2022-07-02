@@ -134,6 +134,15 @@ void NotedownCompiler::addEmojiLUT(std::vector<std::string> filenames) {
 		addEmojiLUT(e);
 }
 
+void NotedownCompiler::addSyntax(std::string filename) {
+	syntax_highlighter.addMatchFromFile(filename);
+}
+
+void NotedownCompiler::addSyntax(std::vector<std::string> filenames) {
+	for (auto & e : filenames)
+		addSyntax(e);
+}
+
 void NotedownCompiler::addSymbols(std::string str) {
 	for (auto e : str)
 		symbols.insert(e);
@@ -237,6 +246,12 @@ _ASTElement * NotedownCompiler::handleRequest(std::string request) {
 			return nullptr;
 		temp_emoji.content = it->second;
 		return &temp_emoji;
+	}
+
+	if (request[0] == '~') {
+		if (!syntax_highlighter.hasLanguage(request.substr(1))) return nullptr;
+
+		return syntax_highlighter_ptr.get();
 	}
 	
 	auto it = iddef.find(request);

@@ -64,6 +64,12 @@ public:
 	Token gettok(int amount);
 
 	/*
+		Checks lastToken, lastInt and lastString against criteria
+	*/
+	bool isLast(Token tok, char sym, int amount = -1);
+	bool isLast(Token tok, std::string str, int amount = -1);
+
+	/*
 		Reads Text literally (no Sym or Space collapsing) until condition is met or EOF/EOL occured
 		Doesnt consume ending token if condition caused end, does consume newline
 		@param condition returns true if reading should end

@@ -125,6 +125,14 @@ int Parser::peekchar() {
 	return _lastChar;
 }
 
+bool Parser::isLast(Token tok, char sym, int amount) {
+	return (lastToken == tok) && (lastString[0] == sym) && (amount > -1 ? lastInt == amount : true);
+}
+
+bool Parser::isLast(Token tok, std::string str, int amount) {
+	return (lastToken == tok) && (lastString == str) && (amount > -1 ? lastInt == amount : true);
+}
+
 std::tuple<std::string, bool> Parser::readUntil(std::function<bool(Parser *)> condition) {
 	if (!condition)
 		return make_tuple("", true);

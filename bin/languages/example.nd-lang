@@ -1,0 +1,45 @@
+# lines that start with # are comments
+
+# extends commands the engine to load an existing file at that point
+extends basic-comments
+# Searches for "basic-comments.nd-lang" in the same folder
+
+# Defines which languages are affected by this file
+matches py python p
+
+# Here a scope is defined by a name, later added as class to html and a type
+
+class-name
+  regex-nr-1
+  regex-nr-2
+
+# Default class names (they are already styled in the default.css)
+
+# keyword-def    (def, func, typedef, ...)
+# keyword-flow   (if, while, for, ...)
+# keyword-other  (in, as, sizeof, ...)
+# literal-num    (1.25, 12, -5, ...)
+# literal-str    ("text", 'c', ...)
+# literal-const  (true, False, null, ...)
+# type           (int, str, float, ...)
+# comment        (# comment, // other, /* more */)
+
+# Example
+keyword
+  ^\s*\bdef\b
+  \breturn\b
+  \bif\b
+  \bwhile\b
+  \bdo\b
+  \bfor\b
+
+literal
+  \d(?:\.\d+)?
+  "\w*"
+  \btrue\b
+  \bfalse\b
+  \bnull\b
+
+comment
+  #.*
+  

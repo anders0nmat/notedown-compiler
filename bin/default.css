@@ -1,6 +1,7 @@
 :root,
 .vscode-light {
 	--text: #000000;
+	--text-code: #000000;
 	--text-hl: #000000;
 	--text-link: #0077ff;
 	--text-visited: #c13bff;
@@ -19,10 +20,22 @@
 	--bg-i-quote: #0026ff24;
 	--bg-w-quote: #ffdd0024;
 	--bg-e-quote: #ff000024;
+
+	--syntax-red: rgb(206, 12, 12);
+	--syntax-orange: rgb(215, 161, 63);
+	--syntax-yellow: rgb(243, 224, 50);
+	--syntax-green: rgb(76, 140, 76);
+	--syntax-mint: rgb(42, 187, 187);
+	--syntax-blue: rgb(63, 124, 255);
+
+	--syntax-lightred: rgb(221, 154, 165);
+	--syntax-lightgreen: rgb(123, 204, 123);
+	--syntax-lightblue: rgb(126, 180, 241);
 }
 
 .vscode-dark {
 	--text: #bfbfbf;
+	--text-code: #cfcfcf;
 	--text-hl: #afafaf;
 	--text-link: #3d8be6;
 	--text-visited: #a069df;
@@ -37,7 +50,7 @@
 	--bg: #1e1e1e;
 	--bg-quote: #7f7f7f10;
 	--bg-mark: #33310a;
-	--bg-code: #8080801f;
+	--bg-code: #0000001f;
 	--bg-i-quote: #006eff24;
 	--bg-w-quote: #ffdd000f;
 	--bg-e-quote: #ff000016;
@@ -46,6 +59,7 @@
 @media screen and (prefers-color-scheme: dark) {
 	:root {
 		--text: #bfbfbf;
+		--text-code: #cfcfcf;
 		--text-hl: #afafaf;
 		--text-link: #3d8be6;
 		--text-visited: #a069df;
@@ -60,7 +74,7 @@
 		--bg: #1e1e1e;
 		--bg-quote: #7f7f7f10;
 		--bg-mark: #33310a;
-		--bg-code: #8080801f;
+		--bg-code: #0000001f;
 		--bg-i-quote: #006eff24;
 		--bg-w-quote: #ffdd000f;
 		--bg-e-quote: #ff000016;
@@ -129,7 +143,7 @@ mark {
 	background-color: var(--bg-mark);
 	border-radius: 4px;
 	padding-inline: 0.4em;
-	padding-block: 0.1em;
+	margin-block: 0.1em;
 	color:inherit;
 }
 
@@ -140,7 +154,7 @@ code {
 	border-radius: 4px;
 	padding-inline: 0.4em;
 	display: inline-block;
-	color: inherit;
+	color: var(--text-code);
 	white-space: pre-wrap;
 }
 
@@ -148,7 +162,6 @@ pre > code {
 	width:100%;
 	tab-size: 4;
 	padding: 0.8em 1.2em;
-	white-space: initial;
 }
 
 blockquote {
@@ -247,6 +260,7 @@ blockquote.nd-sym > *:first-child {
 
 blockquote.nd-sym > *:first-child::marker {
 	font-size: 1.2rem;
+	font-family: "Segoe UI Emoji";
 }
 
 blockquote.i.nd-sym > *:first-child::marker,
@@ -290,4 +304,17 @@ details > summary * {
 .nd-task-list-item > p > input[type="checkbox"] {
 	position: relative;
 	margin-left: -20px;
+}
+
+.nd-syntax-keyword {
+	color: var(--syntax-blue);
+}
+
+.nd-syntax-comment {
+	font-style: italic;
+	color: var(--syntax-green);
+}
+
+.nd-syntax-literal {
+	color: var(--syntax-orange);
 }

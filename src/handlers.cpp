@@ -217,10 +217,10 @@ std::string UnorderedListHandler::triggerChars() {
 
 bool UnorderedListHandler::canHandle(Parser * lex) {
 	return canHandleBlock(lex) ||
-		((lex->lastToken == tokSym) &&
-		(lex->lastString[0] == '-') && 
-		(lex->lastInt == 1) && 
-		(lex->peektok() == tokSpace || lex->peektok() == tokNewline));
+		(
+			(lex->isLast(tokSym, '-', 1)) && 
+			(lex->peektok() == tokSpace || lex->peektok() == tokNewline)
+		);
 }
 
 HandlerReturn UnorderedListHandler::handle(Parser * lex) {
@@ -380,6 +380,7 @@ HandlerReturn CodeHandler::handle(Parser * lex) {
 		lex->gettok(); // Consume ```
 		lex->gettok(); // Consume newline
 		std::unique_ptr<ASTCodeBlock> code = std::make_unique<ASTCodeBlock>(lang);
+		code->addCommand(firstLine);
 		for (auto & e : content)
 			code->addElement(std::move(e));
 		return make_result(std::move(code), true);
@@ -451,9 +452,7 @@ bool InfoBlockHandler::canHandle(Parser * lex) {
 	if (content != nullptr)
 		return canHandleBlock(lex);
 
-	return (lex->lastToken == tokSym) &&
-		(lex->lastString[0] == '>') && 
-		(lex->lastInt == 1) && 
+	return (lex->isLast(tokSym, '>', 1)) &&
 		((lex->peektok() == tokText) ||
 		(lex->peektok() == tokSym && lex->peekchar() == ':'));
 }
@@ -543,9 +542,7 @@ bool IdDefinitionHandler::canHandle(Parser * lex) {
 	if (content != nullptr && type == '<')
 		return canHandleBlock(lex);
 	
-	return (lex->lastToken == tokSym) &&
-		(lex->lastString[0] == '%') &&
-		(lex->lastInt == 1) &&
+	return (lex->isLast(tokSym, '%', 1)) &&
 		(lex->peektok() == tokSym) &&
 		(
 			(lex->peekchar() == '(') ||
@@ -644,9 +641,7 @@ bool FootnoteHandler::canHandle(Parser * lex) {
 	if (content != nullptr)
 		return canHandleBlock(lex);
 	return 
-		(lex->lastToken == tokSym) &&
-		(lex->lastInt == 1) &&
-		(lex->lastString[0] == '^') &&
+		(lex->isLast(tokSym, '^', 1)) &&
 		(
 			(lex->peektok() == tokText) ||
 			(lex->peektok() == tokNumber)

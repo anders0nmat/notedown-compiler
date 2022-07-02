@@ -6,6 +6,8 @@
 #include <unordered_map>
 #include <functional>
 
+#include "highlighter.hpp"
+
 enum ASTProcess {
 	procRegister, // Elements get the chance to register themselves to their parent (Applies inter-documental)
 	procResolve, // Elements resolve their commands, which processes dependencies
@@ -390,6 +392,8 @@ public:
 	std::string url;
 	std::unique_ptr<ASTInlineText> content;
 
+	ASTModifier() {}
+
 	ASTModifier(std::string & url, std::unique_ptr<ASTInlineText> & content)
 	: url(url), content(std::move(content)) {
 		this->content->parent = this;
@@ -481,6 +485,8 @@ protected:
 public:
 	using ASTModifier::ASTModifier;
 
+	ASTStyled() {}
+
 	std::string getHtml(ASTRequestFunc request) override;
 };
 
@@ -555,7 +561,8 @@ public:
 	std::unique_ptr<ASTInlineText> content;
 
 	ASTHeading(int level, std::unique_ptr<ASTInlineText> content) : level(level), content(std::move(content)) {
-		this->content->parent = this;
+		if (this->content != nullptr)
+			this->content->parent = this;
 	}
 
 	void process(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) override;
@@ -648,11 +655,15 @@ public:
 class ASTCodeBlock : public _ASTBlockElement {
 protected:
 	std::string className() {return "ASTCodeBlock";}
+
+	void _register(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) override;
 public:
 	std::string lang;
 	std::unique_ptr<ASTInlineText> command;
 
 	ASTCodeBlock(std::string lang) : lang(lang) {}
+
+	void process(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) override;
 
 	void addCommand(std::unique_ptr<ASTInlineText> & e);
 
@@ -710,7 +721,8 @@ public:
 
 	ASTCollapseBlock() {}
 	ASTCollapseBlock(bool isOpen, std::unique_ptr<ASTInlineText> summary) : isOpen(isOpen), summary(std::move(summary)) {
-		this->summary->parent = this;
+		if (this->summary != nullptr)
+			this->summary->parent = this;
 	}
 
 	void process(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) override;
@@ -718,4 +730,17 @@ public:
 	std::string toJson() override;
 
 	std::string getHtml(ASTRequestFunc request) override;
+};
+
+/*
+
+	Miscelannious Containers for communication with AST
+
+*/
+
+class ASTContainerSyntaxHighlight : public _ASTElement {
+public:
+	HighlighterEngine * engine;
+
+	ASTContainerSyntaxHighlight(HighlighterEngine * ptr) : engine(ptr) {}
 };

@@ -109,7 +109,7 @@ std::unique_ptr<ASTUnorderedList> tocLevel(std::vector<ASTHeading *> & outline, 
 	return std::move(list);
 }
 
-const std::string COMPILER_VERSION = "v1.2";
+const std::string COMPILER_VERSION = "v1.4";
 const std::string DEFAULT_STYLE_PATH = "default.css";
 const std::string CONSOLE_HELP = 
 "\t-?\n"
@@ -136,9 +136,13 @@ const std::string CONSOLE_HELP =
 "\t-outconsole\t: Result will be outputted to console\n"
 "\t-r\n"
 "\t-raw\t: Output only raw html, does not include html-neccessary headers"
+"\t-nodsy\n"
+"\t-nodefaultsyntax\t: Exclude default syntax files"
+"\t-sy\n"
+"\t-syntax\t: Add syntax file"
 ;
 
-std::vector<std::string> files, styles, emoji;
+std::vector<std::string> files, styles, emoji, syntax;
 std::unordered_map<std::string, std::string> args;
 std::string ofile;
 std::string exe_path;
@@ -155,7 +159,7 @@ bool flagSet(std::initializer_list<std::string> strs) {
 }
 
 int main(int argc, const char *argv[]) {
-	exe_path = std::filesystem::path(argv[0]).parent_path().u8string();
+	exe_path = std::filesystem::path(argv[0]).parent_path().string();
 	bool ignoreNext;
 	for (int i = 1; i < argc; i++) {
 		if (ignoreNext){
@@ -176,6 +180,14 @@ int main(int argc, const char *argv[]) {
 		if (arg == "-emoji" || arg == "-e") {
 			if (i + 1 < argc) {
 				emoji.push_back(argv[i + 1]);
+				ignoreNext = true;
+			}
+			continue;
+		}
+
+		if (arg == "-sy" || arg == "-syntax") {
+			if (i + 1 < argc) {
+				syntax.push_back(argv[i + 1]);
 				ignoreNext = true;
 			}
 			continue;
@@ -228,16 +240,23 @@ int main(int argc, const char *argv[]) {
 
 	if (!flagSet({"-node", "-nodefaultemoji"}))
 		emoji.insert(emoji.end(), {
-			exe_path + "/emoji_lut/unicode-14/activities",
-			exe_path + "/emoji_lut/unicode-14/animals-nature",
-			exe_path + "/emoji_lut/unicode-14/flags",
-			exe_path + "/emoji_lut/unicode-14/food-drink",
-			exe_path + "/emoji_lut/unicode-14/objects",
-			exe_path + "/emoji_lut/unicode-14/people-body",
-			exe_path + "/emoji_lut/unicode-14/smileys-emotion",
-			exe_path + "/emoji_lut/unicode-14/symbols",
-			exe_path + "/emoji_lut/unicode-14/travel-places"
+			exe_path + "/emoji_lut/unicode-14/activities.nd-emoji",
+			exe_path + "/emoji_lut/unicode-14/animals-nature.nd-emoji",
+			exe_path + "/emoji_lut/unicode-14/flags.nd-emoji",
+			exe_path + "/emoji_lut/unicode-14/food-drink.nd-emoji",
+			exe_path + "/emoji_lut/unicode-14/objects.nd-emoji",
+			exe_path + "/emoji_lut/unicode-14/people-body.nd-emoji",
+			exe_path + "/emoji_lut/unicode-14/smileys-emotion.nd-emoji",
+			exe_path + "/emoji_lut/unicode-14/symbols.nd-emoji",
+			exe_path + "/emoji_lut/unicode-14/travel-places.nd-emoji"
 		});
+	
+	if (!flagSet({"-nodsy", "-nodefaultsyntax"}))
+		syntax.insert(syntax.end(), {
+			exe_path + "/languages/python.nd-lang"
+		});
+
+
 	
 
 	// ------------------------------ //
@@ -248,6 +267,7 @@ int main(int argc, const char *argv[]) {
 	NotedownCompiler compiler;
 
 	compiler.addEmojiLUT(emoji);
+	compiler.addSyntax(syntax);
 	compiler.addDefaultHandlers();
 
 	compiler.addGeneratorFunc("now", [](_ASTElement * e, ASTProcess step, std::vector<std::string> & args) {

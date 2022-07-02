@@ -73,7 +73,7 @@ complete - Tested and working (as expected)
   - Footnotes (untested)
   - Heading IDs (untested)
   - Definition List
-  - Task List (Collides with Links -> Needs token rework)
+  - Task List (untested)
   - Emoji (untested)
   - Highlight (untested)
   - Reference-Style Links (untested)
