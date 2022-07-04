@@ -1,6 +1,6 @@
 # lines that start with # are comments
 
-# extends commands the engine to load an existing file at that point
+# commands the engine to load an existing file at that point
 extends basic-comments
 # Searches for "basic-comments.nd-lang" in the same folder
 
@@ -12,6 +12,21 @@ matches py python p
 class-name
   regex-nr-1
   regex-nr-2
+
+# introducing four modifiers
+# open : Pushs class-name to stack, when any of these match
+# close : Pops class-name from stack if any match
+# default : Any text that gets passed plain will use class-name
+# when : rule only active if class-name is in stack
+
+class-name open-default
+  regex-nr-1
+
+class-name close
+  regex-nr-2
+
+in-class-name when class-name
+  regex-nr-3
 
 # Default class names (they are already styled in the default.css)
 

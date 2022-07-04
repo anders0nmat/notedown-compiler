@@ -1,0 +1,11 @@
+
+matches txt
+
+comment open-default
+	/\*
+
+comment close
+	\*/
+
+literal when comment
+	!\S+

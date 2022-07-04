@@ -1117,6 +1117,8 @@ std::string ASTCodeBlock::getHtml(ASTRequestFunc request) {
 		std::string raw;
 		_ASTInlineElement * text;
 		ASTInlineText * container;
+		std::string total_text;
+		Highlighter highlighter = lang_handler->engine->getHighlighter(lang);
 		for (size_t i = 0; i < elements.size(); i++) {
 			text = dynamic_cast<_ASTInlineElement*>(elements[i].get());
 			if (text == nullptr) continue;
@@ -1124,8 +1126,8 @@ std::string ASTCodeBlock::getHtml(ASTRequestFunc request) {
 			raw = text->literalText();
 			elements[i] = std::make_unique<ASTInlineText>();
 			container = dynamic_cast<ASTInlineText*>(elements[i].get());
-			lang_handler->engine->highlight_callback(raw, lang, [container](std::string output, const std::string & type){
-				if (type.empty()) {
+			highlighter(raw, [container](std::string output, const std::string & type){
+				if (output.empty() || type.empty()) {
 					container->addElement(std::make_unique<ASTPlainText>(output));
 				}
 				else {
@@ -1137,6 +1139,19 @@ std::string ASTCodeBlock::getHtml(ASTRequestFunc request) {
 					container->addElement(std::move(style));
 				}
 			});
+			// lang_handler->engine->highlight_callback(raw, lang, [container](std::string output, const std::string & type){
+			// 	if (type.empty()) {
+			// 		container->addElement(std::make_unique<ASTPlainText>(output));
+			// 	}
+			// 	else {
+			// 		std::unique_ptr<ASTStyled> style = std::make_unique<ASTStyled>();
+			// 		style->commands.addClass("nd-syntax-" + type);
+			// 		style->content = std::make_unique<ASTInlineText>();
+			// 		style->content->parent = style->content.get();
+			// 		style->content->addElement(std::make_unique<ASTPlainText>(output));
+			// 		container->addElement(std::move(style));
+			// 	}
+			// });
 		}
 	}
 
