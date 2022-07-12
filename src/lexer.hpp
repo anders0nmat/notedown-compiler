@@ -75,7 +75,7 @@ public:
 		@param condition returns true if reading should end
 		@return String read and whether it ended on condition (=true) or EOF/EOL (=false)
 	*/
-	std::tuple<std::string, bool> readUntil(std::function<bool(Parser *)> condition);
+	std::tuple<std::string, bool> readUntil(std::function<bool(Parser *)> condition, bool escape = true);
 
 	/**
 		Reads Text of scheme <url> <text> until delim is met or EOF/EOL occured.

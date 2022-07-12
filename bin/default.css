@@ -21,16 +21,15 @@
 	--bg-w-quote: #ffdd0024;
 	--bg-e-quote: #ff000024;
 
-	--syntax-red: rgb(206, 12, 12);
-	--syntax-orange: rgb(215, 161, 63);
-	--syntax-yellow: rgb(243, 224, 50);
-	--syntax-green: rgb(76, 140, 76);
-	--syntax-mint: rgb(42, 187, 187);
-	--syntax-blue: rgb(63, 124, 255);
-
-	--syntax-lightred: rgb(221, 154, 165);
-	--syntax-lightgreen: rgb(123, 204, 123);
-	--syntax-lightblue: rgb(126, 180, 241);
+	--syntax-string: #A31515;
+	--syntax-number: #098658;
+	--syntax-const: #0000FF;
+	--syntax-control: #0000FF;
+	--syntax-definition: #0000FF;
+	--syntax-flow: #AF00DB;
+	--syntax-comment: #008000;
+	--syntax-type-builtin: #0000FF;
+	--syntax-type: #267F99;
 }
 
 .vscode-dark {
@@ -54,6 +53,16 @@
 	--bg-i-quote: #006eff24;
 	--bg-w-quote: #ffdd000f;
 	--bg-e-quote: #ff000016;
+
+	--syntax-string: #CE9178;
+	--syntax-number: #B5CEA8;
+	--syntax-const: #569CD6;
+	--syntax-control: #569CD6;
+	--syntax-definition: #569CD6;
+	--syntax-flow: #C586C0;
+	--syntax-comment: #6A9955;
+	--syntax-type-builtin: #569CD6;
+	--syntax-type: #4EC9B0;
 }
 
 @media screen and (prefers-color-scheme: dark) {
@@ -78,6 +87,16 @@
 		--bg-i-quote: #006eff24;
 		--bg-w-quote: #ffdd000f;
 		--bg-e-quote: #ff000016;
+
+		--syntax-string: #CE9178;
+		--syntax-number: #B5CEA8;
+		--syntax-const: #569CD6;
+		--syntax-control: #569CD6;
+		--syntax-definition: #569CD6;
+		--syntax-flow: #C586C0;
+		--syntax-comment: #6A9955;
+		--syntax-type-builtin: #569CD6;
+		--syntax-type: #4EC9B0;
 	}
 }
 
@@ -306,15 +325,35 @@ details > summary * {
 	margin-left: -20px;
 }
 
-.nd-syntax-keyword {
-	color: var(--syntax-blue);
+.nd-syntax-literal-const {
+	color: var(--syntax-const);
+}
+
+.nd-syntax-keyword-def {
+	color: var(--syntax-definition);
+}
+
+.nd-syntax-keyword-other {
+	color: var(--syntax-control);
 }
 
 .nd-syntax-comment {
 	font-style: italic;
-	color: var(--syntax-green);
+	color: var(--syntax-comment);
 }
 
-.nd-syntax-literal {
-	color: var(--syntax-orange);
+.nd-syntax-keyword-flow {
+	color: var(--syntax-flow);
+}
+
+.nd-syntax-literal-num {
+	color: var(--syntax-number);
+}
+
+.nd-syntax-literal-str {
+	color: var(--syntax-string);
+}
+
+.nd-syntax-type {
+	color: var(--syntax-type);
 }

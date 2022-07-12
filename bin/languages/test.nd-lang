@@ -1,11 +1,54 @@
 
 matches txt
 
-extends comment
+# keyword-def    (def, func, typedef, ...)
+# keyword-flow   (if, while, for, ...)
+# keyword-other  (in, as, sizeof, ...)
+# literal-num    (1.25, 12, -5, ...)
+# literal-str    ("text", 'c', ...)
+# literal-const  (true, False, null, ...)
+# type           (int, str, float, ...)
+# comment        (# comment, // other, /* more */)
 
 keyword-def
 	\bdef\b
+	\bfunc\b
+	\bclass\b
+
+keyword-flow
 	\bif\b
+	\belse\b
+	\bwhile\b
+	\bdo\b
+	\breturn\b
+
+keyword-other
+	\bin\b
+	\bas\b
+	\binstanceof\b
+	\bsizeof\b
+
+literal-num
+	\b\d+(?:\.\d+)?\b
+
+literal-str
+	".*?[^\\]"
 
 literal-const
-	".*"
+	\b[tT]rue\b
+	\b[fF]alse\b
+	\bNone\b
+	\bnull\b
+
+type
+	\bint\b
+	\bint32\b
+	\bfloat\b
+	\bdouble\b
+	\bbool\b
+	\bstr\b
+	\blist\b
+
+comment
+	//.*$
+	#.*$

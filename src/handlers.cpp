@@ -370,7 +370,7 @@ HandlerReturn CodeHandler::handle(Parser * lex) {
 
 	std::tie(currLine, success) = lex->readUntil([count](Parser * lex) {
 		return (lex->lastToken == tokSym && lex->lastString[0] == '`' && lex->lastInt == count && (lex->peektok() == tokNewline || lex->peektok() == tokEOF));
-	});
+	}, false);
 
 	// One only escapes if it is newline or end of block
 	

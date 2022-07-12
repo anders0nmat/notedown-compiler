@@ -133,10 +133,10 @@ bool Parser::isLast(Token tok, std::string str, int amount) {
 	return (lastToken == tok) && (lastString == str) && (amount > -1 ? lastInt == amount : true);
 }
 
-std::tuple<std::string, bool> Parser::readUntil(std::function<bool(Parser *)> condition) {
+std::tuple<std::string, bool> Parser::readUntil(std::function<bool(Parser *)> condition, bool escape) {
 	if (!condition)
 		return make_tuple("", true);
-	std::string res;
+	std::string res, peek;
 
 	while (
 		(lastToken != tokNewline) &&
@@ -145,9 +145,13 @@ std::tuple<std::string, bool> Parser::readUntil(std::function<bool(Parser *)> co
 		) {
 		// Take text literally
 		if (lastToken == tokText || lastToken == tokNumber)
-			res += lastString;
+			res += peek + lastString;
 		else
-			res += std::string(lastInt, lastString[0]);
+			res += peek + std::string(lastInt, lastString[0]);
+		peek = "";
+		if (!escape && peektok() == _tokEscape) {
+			peek = "\\";
+		}
 		gettok(); // Consume inserted Text
 	}
 
