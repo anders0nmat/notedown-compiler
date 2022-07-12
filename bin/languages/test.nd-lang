@@ -1,11 +1,11 @@
 
 matches txt
 
-comment open-default
-	/\*
+extends comment
 
-comment close
-	\*/
+keyword-def
+	\bdef\b
+	\bif\b
 
-literal when comment
-	!\S+
+literal-const
+	".*"

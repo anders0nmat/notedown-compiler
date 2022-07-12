@@ -37,9 +37,6 @@ void SyntaxLanguage::addMatch(std::string group_name, SyntaxMatch match) {
 	matches[group_name]->matches.push_back(match);
 }
 
-
-
-
 std::vector<std::string> splitStr(const std::string & str, std::string delimiters) {
 
 	std::vector<std::string> result;
@@ -61,8 +58,6 @@ std::vector<std::string> splitStr(const std::string & str, std::string delimiter
 	}
 	return result;
 }
-
-
 
 void HighlighterEngine::addLanguage(std::string language) {
 	if (languages.count(language) == 0)
@@ -102,12 +97,14 @@ void HighlighterEngine::addMatch(std::string language, std::string group_name, s
 	languages[language]->addMatch(group_name, match);
 }
 
-void HighlighterEngine::addMatchFromFile(std::string filename) {
+void HighlighterEngine::addLangFromFileRecursive(std::string filename, std::shared_ptr<SyntaxLanguage> & lang, std::unordered_set<std::string> & included_files, bool inheritFileType) {
+	if (included_files.count(filename) != 0) return; // Break include circle to prevent endless includes
+	
 	std::ifstream file(filename);
 
 	if (!file.is_open()) return;
 
-	std::shared_ptr<SyntaxLanguage> group = std::make_shared<SyntaxLanguage>();
+	included_files.emplace(filename);
 
 	std::string line;
 	std::string first_word;
@@ -120,17 +117,21 @@ void HighlighterEngine::addMatchFromFile(std::string filename) {
 		first_word = line.substr(0, line.find_first_of(" \t"));
 
 		if (first_word == "matches") {
-			// Language names defined
-			std::vector<std::string> toks = splitStr(line, " \t");
-			if (toks.empty()) continue;
-			for (auto it = toks.begin() + 1; it != toks.end(); it++) {
-				languages.emplace(*it, group);
+			if (inheritFileType) {
+				// Language names defined
+				std::vector<std::string> toks = splitStr(line, " \t");
+				if (toks.empty()) continue;
+				for (auto it = toks.begin() + 1; it != toks.end(); it++) {
+					languages.emplace(*it, lang);
+				}
 			}
 			continue;
 		}
 		if (first_word == "extends") {
 			// Build upon another lang
-			// TODO
+			std::string file_path = filename.substr(0, filename.find_last_of("/\\") + 1);
+			std::string file = file_path + line.substr(line.find_first_of(" \t") + 1) + ".nd-lang";
+			addLangFromFileRecursive(file, lang, included_files, false);
 			continue;
 		}
 
@@ -143,10 +144,6 @@ void HighlighterEngine::addMatchFromFile(std::string filename) {
 			isDefault = false;
 			activeGroups = nullptr;
 			for (size_t idx = 1; idx < toks.size(); idx++) {
-				if (activeGroups != nullptr) {
-					activeGroups->insert(toks[idx]);
-					continue;
-				}
 				if (toks[idx] == "open-default") {
 					isOpening = true;
 					isDefault = true;
@@ -161,6 +158,15 @@ void HighlighterEngine::addMatchFromFile(std::string filename) {
 					continue;
 				}
 				if (toks[idx] == "when") {
+					if (activeGroups == nullptr) {
+						// if this is not true, "always" was called before so this keyword lost its meaning
+						activeGroups = std::make_shared<std::unordered_set<std::string>>();
+						activeGroups->insert(toks.begin() + idx + 1, toks.end());
+					}
+					break;
+				}
+				if (toks[idx] == "always") {
+					// effectively lets this group apply under all conditions
 					activeGroups = std::make_shared<std::unordered_set<std::string>>();
 					continue;
 				}
@@ -175,8 +181,14 @@ void HighlighterEngine::addMatchFromFile(std::string filename) {
 		if (start == std::string::npos) continue;
 		size_t end = line.find_last_not_of(" \t");
 		first_word = line.substr(start, end == std::string::npos ? end : end - start + 1);
-		group->addMatch(curr_group, SyntaxMatch(first_word, isOpening, isClosing, isDefault, activeGroups));
+		lang->addMatch(curr_group, SyntaxMatch(first_word, isOpening, isClosing, isDefault, activeGroups));
 	}
+}
+
+void HighlighterEngine::addMatchFromFile(std::string filename) {
+	std::shared_ptr<SyntaxLanguage> lang = std::make_shared<SyntaxLanguage>();
+	std::unordered_set<std::string> included_files;
+	addLangFromFileRecursive(filename, lang, included_files, true);
 }
 
 typedef std::string::const_iterator string_iterator;
@@ -335,6 +347,10 @@ void Highlighter::operator()(std::string input, std::function<void(std::string, 
 			// This match does not apply because the needed groups are not active
 			continue;
 		}
+		if (!matchObj.isClosing && matchObj.activeWhen == nullptr && group_stack.size() != 0) {
+			// This match does not apply because it requires no groups to be active
+			continue;
+		}
 		if (matchObj.isClosing && group_stack.count(std::get<0>(match)) == 0) {
 			// Closing match but not open
 			continue;
@@ -346,8 +362,9 @@ void Highlighter::operator()(std::string input, std::function<void(std::string, 
 			default_group.pop();
 			group_stack.erase(std::get<0>(match));
 		}
-		else if (matchObj.isOpening && matchObj.isDefault) {
-			default_group.push(std::get<0>(match));
+		else if (matchObj.isOpening) {
+			if (matchObj.isDefault)
+				default_group.push(std::get<0>(match));
 			group_stack.insert(std::get<0>(match));
 		}
 

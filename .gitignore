@@ -6,3 +6,5 @@
 /templateType.hpp
 /*.nd
 /*.html
+/build
+/__pycache__

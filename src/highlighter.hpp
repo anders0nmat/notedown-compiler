@@ -56,6 +56,7 @@ private:
     
     std::unordered_map<std::string, std::shared_ptr<SyntaxLanguage>> languages;
 
+    void addLangFromFileRecursive(std::string filename, std::shared_ptr<SyntaxLanguage> & lang, std::unordered_set<std::string> & included_files, bool inheritFileType = false);
 public:
     HighlighterEngine(){}
 

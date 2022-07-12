@@ -1,0 +1,10 @@
+# Basic comment abilities
+
+comment open-default
+	/\*
+
+comment close
+	\*/
+
+literal when comment
+	![^\r\n]*
