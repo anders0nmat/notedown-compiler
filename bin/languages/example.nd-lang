@@ -17,7 +17,7 @@ class-name
 # open : Pushs class-name to stack, when any of these match
 # close : Pops class-name from stack if any match
 # default : Any text that gets passed plain will use class-name
-# when : rule only active if class-name is in stack
+# when : rule only active if class-name is in stack, works in OR-manner. if within parenthesis, it counts as AND
 
 class-name open-default
   regex-nr-1
@@ -38,6 +38,52 @@ in-class-name when class-name
 # literal-const  (true, False, null, ...)
 # type           (int, str, float, ...)
 # comment        (# comment, // other, /* more */)
+
+# NEW DEFAULTS
+
+# comment           Same as comment-line
+# comment-line
+# comment-block
+
+# doc-emphazise     lighter green
+# doc-highlight     blue
+# doc-warning       yellowish
+# doc-todo          idk, purple?
+# doc-error         red
+
+# constant          Same as constant-other
+# constant-numeric
+# constant-character
+# constant-character-escape
+# constant-string
+# constant-string-evaluate
+# constant-language
+# constant-other
+
+# entity
+# entity-function
+# entity-type
+# entity-tag
+
+# invalid
+# invalid-illegal
+# invalid-deprecated
+
+# keyword           Same as keyword-other
+# keyword-control
+# keyword-operator
+# keyword-other
+
+# storage           Same as storage-type
+# storage-type
+# storage-modifier
+
+# variable
+# variable-parameter
+# variable-language
+# variable-other
+
+# END NEW DEFAULTS
 
 # Example
 keyword

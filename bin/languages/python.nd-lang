@@ -1,0 +1,93 @@
+
+matches py python
+
+extends documentation
+
+
+keyword-def
+	\bclass\b
+	\bdef\b
+	\bdel\b
+	\bglobal\b
+	\blambda\b
+	\bnonlocal\b
+
+keyword-control
+	\bassert\b
+	\bbreak\b
+	\bcontinue\b
+	\belif\b
+	\belse\b
+	\bexcept\b
+	\bfinally\b
+	\bfor\b
+	\bfrom\b
+	\bif\b
+	\bimport\b
+	\bpass\b
+	\braise\b
+	\breturn\b
+	\btry\b
+	\bwhile\b
+	\bwith\b
+	\byield\b
+
+keyword-operator
+	\band\b
+	\bas\b
+	\bin\b
+	\bis\b
+	\bnot\b
+	\bor\b
+
+constant-numeric
+	\b-?\d+(?:[eE][+-]?\d+)?\b
+	\b-?\d*\.\d+(?:[eE][+-]?\d+)?\b
+	\b0x[0-9a-fA-F]+\b
+	\b0b[01]+\b
+
+constant-string open-default
+	(?=[^\\])"
+
+constant-string close
+	[^\\]"
+	$
+
+constant-character-escape when constant-string
+	\\.
+
+constant-language
+	\bFalse\b
+	\bNone\b
+	\bTrue\b
+
+entity-function
+	\w[\w\d]*(?=\()
+
+entity-tag
+	[a-zA-Z_]\w*(?=\.)
+
+entity-type
+	\bstr\b
+	\blist\b
+	\bdict\b
+	\bset\b
+	\btuple\b
+
+storage-type
+	\bbool\b
+	\bint\b
+	\bfloat\b
+
+variable-language
+	\b__name__\b
+	\b__file__\b
+
+comment-line
+	\#$
+
+comment-line open-default
+	\#(?!$)
+
+comment-line close
+	.$

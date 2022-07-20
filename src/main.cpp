@@ -235,8 +235,10 @@ int main(int argc, const char *argv[]) {
 		ofile = filename + ".html";
 	}
 
-	if (!flagSet({"-nods", "-nodefaultstyle"}))
-		styles.push_back(exe_path + "\\" + DEFAULT_STYLE_PATH);
+	if (!flagSet({"-nods", "-nodefaultstyle"})) {
+		styles.push_back(exe_path + "\\" + "default.css");
+		styles.push_back(exe_path + "\\" + "syntax.css");
+	}
 
 	if (!flagSet({"-node", "-nodefaultemoji"}))
 		emoji.insert(emoji.end(), {

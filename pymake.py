@@ -1,6 +1,5 @@
 import os
 import time
-from tracemalloc import start
 
 # 0 : No output at all
 # 1 : Output if something was done
