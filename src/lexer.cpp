@@ -37,10 +37,6 @@ Token Parser::peektok(int chr) {
 	}
 }
 
-inline Token Parser::peektok() {
-	return peektok(_lastChar);
-}
-
 Token Parser::gettok() {
 	if (_lastChar == 0)
 		_lastChar = input->get();
@@ -166,7 +162,7 @@ std::tuple<std::string, bool> Parser::readUntil(std::function<bool(Parser *)> co
 unique_ptr<ParserHandler> Parser::findNextHandler() {
 	for (auto & e : compiler->handlerList) {
 		if (e->canHandle(this))
-			return move(e->createNew());
+			return e->createNew();
 	}
 	return nullptr;
 }
@@ -174,7 +170,7 @@ unique_ptr<ParserHandler> Parser::findNextHandler() {
 unique_ptr<ParserHandler> Parser::findNextHandler(string name) {
 	auto p = compiler->handlerAlias.find(name);
 	if (p != compiler->handlerAlias.end()) {
-		return move(compiler->handlerList[p->second]->createNew());
+		return compiler->handlerList[p->second]->createNew();
 	}
 	return nullptr;
 }
@@ -185,7 +181,7 @@ std::unique_ptr<ParserHandler> Parser::findHandlerAfter(std::unique_ptr<ParserHa
 
 	for (auto i = h->id + 1; i < compiler->handlerList.size(); i++) {
 		if (compiler->handlerList[i]->canHandle(this))
-			return move(compiler->handlerList[i]->createNew());
+			return compiler->handlerList[i]->createNew();
 	}
 	return nullptr;
 }
@@ -193,7 +189,7 @@ std::unique_ptr<ParserHandler> Parser::findHandlerAfter(std::unique_ptr<ParserHa
 unique_ptr<InlineHandler> Parser::findNextInlineHandler() {
 	for (auto & e : compiler->inlineHandlerList) {
 		if (e->canHandle(this))
-			return move(e->createNew());
+			return e->createNew();
 	}
 	return nullptr;
 }
@@ -202,7 +198,7 @@ unique_ptr<InlineHandler> Parser::findNextInlineHandler(string name) {
 	auto p = compiler->inlineHandlerAlias.find(name);
 	if (p != compiler->inlineHandlerAlias.end()) {
 		// auto it = p->second;
-		return move(compiler->inlineHandlerList[p->second]->createNew());
+		return compiler->inlineHandlerList[p->second]->createNew();
 	}
 	return nullptr;
 }
@@ -213,7 +209,7 @@ std::unique_ptr<InlineHandler> Parser::findInlineHandlerAfter(std::unique_ptr<In
 
 	for (auto i = h->id + 1; i < compiler->inlineHandlerList.size(); i++) {
 		if (compiler->inlineHandlerList[i]->canHandle(this))
-			return move(compiler->inlineHandlerList[i]->createNew());
+			return compiler->inlineHandlerList[i]->createNew();
 	}
 	return nullptr;
 }
@@ -253,7 +249,7 @@ bool Parser::addToDocument(unique_ptr<_ASTElement> element) {
 std::tuple<unique_ptr<_ASTElement>, bool> Parser::parseLine(unique_ptr<ParserHandler> & lastHandler) {
 	if (lastToken == tokEOF) {
 		if (lastHandler != nullptr) {
-			unique_ptr<_ASTElement> e = move(lastHandler->finish(this));
+			unique_ptr<_ASTElement> e = lastHandler->finish(this);
 			lastHandler = nullptr;
 			return make_tuple(move(e), true);
 		}
@@ -262,7 +258,7 @@ std::tuple<unique_ptr<_ASTElement>, bool> Parser::parseLine(unique_ptr<ParserHan
 
 	if (lastHandler != nullptr && !lastHandler->canHandle(this)) {
 		// lastHandler was unexpectedly ended. Give him a chance to finish up
-		unique_ptr<_ASTElement> e = move(lastHandler->finish(this));
+		unique_ptr<_ASTElement> e = lastHandler->finish(this);
 		lastHandler = nullptr;
 		return make_tuple(move(e), true);
 	}
@@ -271,14 +267,14 @@ std::tuple<unique_ptr<_ASTElement>, bool> Parser::parseLine(unique_ptr<ParserHan
 	unique_ptr<_ASTElement> element;
 	do {
 		if (err || lastHandler == nullptr) {
-			lastHandler = move(findHandlerAfter(lastHandler));
+			lastHandler = findHandlerAfter(lastHandler);
 			if (lastHandler != nullptr)
 				lastHandler->snap = createTimesnap();
 		}
 		if (lastHandler == nullptr) {
 			if (lastToken == tokEOF)
 				return make_tuple(nullptr, false);
-			lastHandler = move(findNextHandler("H_default"));
+			lastHandler = findNextHandler("H_default");
 			lastHandler->snap = createTimesnap();
 		}
 
@@ -293,7 +289,7 @@ std::tuple<unique_ptr<_ASTElement>, bool> Parser::parseLine(unique_ptr<ParserHan
 }
 
 inline unique_ptr<_ASTElement> Parser::parseLine() {
-	return move(std::get<0>(parseLine(_lastHandler)));
+	return std::get<0>(parseLine(_lastHandler));
 }
 
 void Parser::createDocument() {
@@ -307,11 +303,11 @@ void Parser::parseDocument() {
 
 	// Parse until error or end of file	
 	while (lastToken != tokEOF) {
-		addToDocument(std::move(parseLine()));
+		addToDocument(parseLine());
 	}
 
 	// To finish any block elements that unexpectedly got ended on EOF
-	addToDocument(std::move(parseLine()));
+	addToDocument(parseLine());
 }
 
 unique_ptr<ASTDocument> & Parser::getDocument() {
@@ -353,7 +349,7 @@ tuple<unique_ptr<ASTInlineText>, bool> Parser::parseText(
 				bool err = false;
 				unique_ptr<InlineHandler> handler = nullptr;
 				do {
-					handler = move(findInlineHandlerAfter(handler));
+					handler = findInlineHandlerAfter(handler);
 					if (handler == nullptr) {
 						// No appropriate handler, print it or return
 						if (!unknownAsText) 
@@ -387,7 +383,7 @@ unique_ptr<_ASTInlineElement> Parser::_parseLine(bool allowLb) {
 	switch (lastToken) {
 		case tokNumber:
 		case tokText:
-			return move(_parsePlainText());
+			return _parsePlainText();
 		case tokSpace:
 			if (allowLb && lastToken == tokSpace && lastInt >= 2 && peektok() == tokNewline) { 
 				// Forced Linebreak (<Space> <Space> <Linebreak>)
@@ -395,7 +391,7 @@ unique_ptr<_ASTInlineElement> Parser::_parseLine(bool allowLb) {
 			}
 			else if (peektok() == tokText) {
 				// Space and then text (e.g. after inline styling)
-				return move(_parsePlainText());
+				return _parsePlainText();
 			}
 			else if (peektok() == tokNewline) {
 				gettok(); // Consume space

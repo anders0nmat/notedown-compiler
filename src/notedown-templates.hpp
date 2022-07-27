@@ -68,7 +68,7 @@ protected:
 	std::unique_ptr<InlineHandler> newSelf() {
 		std::unique_ptr<InlineHandler> p = std::make_unique<T>();
 		inheritId(p);
-		return std::move(p);
+		return p;
 	}
 
 public:
@@ -125,7 +125,7 @@ protected:
 	std::unique_ptr<ParserHandler> newSelf() {
 		std::unique_ptr<ParserHandler> p = std::make_unique<T>();
 		inheritId(p);
-		return std::move(p);
+		return p;
 	}
 
 public:

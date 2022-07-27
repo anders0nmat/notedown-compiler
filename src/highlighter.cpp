@@ -110,7 +110,7 @@ void HighlighterEngine::addLangFromFileRecursive(std::string filename, std::shar
 	std::string first_word;
 	std::string curr_group;
 	bool isOpening, isClosing, isDefault;
-	std::shared_ptr<std::unordered_set<std::string>> activeGroups;
+	std::shared_ptr<std::vector<std::unordered_set<std::string>>> activeGroups;
 	while (std::getline(file, line)) {
 		if (line.empty() || line[0] == '#') continue; // Comments an empty Lines
 
@@ -160,14 +160,41 @@ void HighlighterEngine::addLangFromFileRecursive(std::string filename, std::shar
 				if (toks[idx] == "when") {
 					if (activeGroups == nullptr) {
 						// if this is not true, "always" was called before so this keyword lost its meaning
-						activeGroups = std::make_shared<std::unordered_set<std::string>>();
-						activeGroups->insert(toks.begin() + idx + 1, toks.end());
+						activeGroups = std::make_shared<std::vector<std::unordered_set<std::string>>>();
+						
+						bool nextInCurrent = false;
+						for (auto it = toks.begin() + idx + 1; it != toks.end(); it++) {
+							std::string tag = *it;
+							if (tag == "&") {
+								nextInCurrent = true;
+								continue;
+							}
+							if (tag[0] == '&') {
+								nextInCurrent = true;
+								tag = tag.substr(1);
+							}
+
+							if (nextInCurrent) {
+								activeGroups->back().emplace(tag[tag.length() - 1] != '&' ? tag : tag.substr(0, tag.length() - 1));
+								nextInCurrent = false;
+							}
+							else {
+								activeGroups->push_back({(tag[tag.length() - 1] != '&') ? tag : (tag.substr(0, tag.length() - 1))});
+							}
+
+							if (tag[tag.length() - 1] == '&'){
+								nextInCurrent = true;
+							}
+						}
+
+						//activeGroups->insert(toks.begin() + idx + 1, toks.end());
 					}
 					break;
 				}
 				if (toks[idx] == "always") {
 					// effectively lets this group apply under all conditions
-					activeGroups = std::make_shared<std::unordered_set<std::string>>();
+					activeGroups = std::make_shared<std::vector<std::unordered_set<std::string>>>();
+					activeGroups->emplace_back(); // Add a case where every case matches
 					continue;
 				}
 			}
@@ -196,11 +223,19 @@ typedef std::regex_iterator<string_iterator> regex_iterator;
 typedef std::tuple<std::string, regex_iterator, SyntaxMatch &> group_regex_iterator;
 
 template<typename T>
-bool isSubset(std::unordered_set<T> & set, std::unordered_set<T> & subset) {
+bool isSubset(std::unordered_map<T, int> & set, std::unordered_set<T> & subset) {
 	for (const T & e : subset)
-		if (set.count(e) == 0)
+		if (set.count(e) == 0 || set.at(e) == 0)
 			return false;
 	return true;
+}
+
+template<typename T>
+bool anyIsSubset(std::unordered_map<T, int> & set, std::vector<std::unordered_set<T>> & subset) {
+	for (std::unordered_set<T> & e : subset)
+		if (isSubset(set, e))
+			return true;
+	return false;
 }
 
 // std::string HighlighterEngine::highlight(std::string input, std::string language, std::function<void(std::string&, const std::string&, const std::string&)> processor) {
@@ -247,68 +282,67 @@ bool isSubset(std::unordered_set<T> & set, std::unordered_set<T> & subset) {
 // 	return result;
 // }
 
-void HighlighterEngine::highlight_callback(std::string input, std::string language, std::function<void(std::string, const std::string&)> writer) {
-	string_iterator input_begin = input.begin();
-	std::set<group_regex_iterator, std::function<bool(const group_regex_iterator &, const group_regex_iterator &)>>
-		matches([](const group_regex_iterator & l, const group_regex_iterator & r) {
-		return std::get<1>(l)->position() < std::get<1>(r)->position();
-	});
-	regex_iterator rend;
-
-	addLanguage(language);
-	auto & lang = languages[language];
-
-	for (auto & group : lang->groups) {
-		for (auto & match : lang->matches[group]->matches) {
-			regex_iterator rit(input_begin, input.end(), match.match);
-			while (rit != rend) {
-				matches.emplace(group, rit, match);
-				rit++;
-			}
-		}
-	}
-
-
-	std::stack<std::string> default_group;
-	std::unordered_set<std::string> group_stack;
-	for (auto & match : matches) {
-		// Translate Match into Iterators
-		string_iterator match_begin = input.begin() + std::get<1>(match)->position();
-		string_iterator match_end = match_begin + std::get<1>(match)->length();
-
-		// If we are already over this match, continue
-		if (std::distance(input_begin, match_begin) < 0) continue;
-
-		auto & matchObj = std::get<2>(match);
-
-		if (matchObj.activeWhen != nullptr && !isSubset(group_stack, *matchObj.activeWhen)) {
-			// This match does not apply because the needed groups are not active
-			continue;
-		}
-		if (matchObj.isClosing && group_stack.count(std::get<0>(match)) == 0) {
-			// Closing match but not open
-			continue;
-		}
-
-		writer(std::string(input_begin, match_begin), default_group.top());
-
-		if (matchObj.isClosing) {
-			default_group.pop();
-			group_stack.erase(std::get<0>(match));
-		}
-		else if (matchObj.isOpening && matchObj.isDefault) {
-			default_group.push(std::get<0>(match));
-			group_stack.insert(std::get<0>(match));
-		}
-
-		// Then call the first Match
-		writer(std::get<1>(match)->str(), std::get<0>(match));
-		// Advance input
-		input_begin = match_end;
-	}
-
-	writer(std::string(input_begin, input.cend()), "");
-}
+// void HighlighterEngine::highlight_callback(std::string input, std::string language, std::function<void(std::string, const std::string&)> writer) {
+// 	string_iterator input_begin = input.begin();
+// 	std::set<group_regex_iterator, std::function<bool(const group_regex_iterator &, const group_regex_iterator &)>>
+// 		matches([](const group_regex_iterator & l, const group_regex_iterator & r) {
+// 		return std::get<1>(l)->position() < std::get<1>(r)->position();
+// 	});
+// 	regex_iterator rend;
+//
+// 	addLanguage(language);
+// 	auto & lang = languages[language];
+//
+// 	for (auto & group : lang->groups) {
+// 		for (auto & match : lang->matches[group]->matches) {
+// 			regex_iterator rit(input_begin, input.end(), match.match);
+// 			while (rit != rend) {
+// 				matches.emplace(group, rit, match);
+// 				rit++;
+// 			}
+// 		}
+// 	}
+//
+// 	std::stack<std::string> default_group;
+// 	std::unordered_set<std::string> group_stack;
+// 	for (auto & match : matches) {
+// 		// Translate Match into Iterators
+// 		string_iterator match_begin = input.begin() + std::get<1>(match)->position();
+// 		string_iterator match_end = match_begin + std::get<1>(match)->length();
+//
+// 		// If we are already over this match, continue
+// 		if (std::distance(input_begin, match_begin) < 0) continue;
+//
+// 		auto & matchObj = std::get<2>(match);
+//
+// 		if (matchObj.activeWhen != nullptr && !isSubset(group_stack, *matchObj.activeWhen)) {
+// 			// This match does not apply because the needed groups are not active
+// 			continue;
+// 		}
+// 		if (matchObj.isClosing && group_stack.count(std::get<0>(match)) == 0) {
+// 			// Closing match but not open
+// 			continue;
+// 		}
+//
+// 		writer(std::string(input_begin, match_begin), default_group.top());
+//
+// 		if (matchObj.isClosing) {
+// 			default_group.pop();
+// 			group_stack.erase(std::get<0>(match));
+// 		}
+// 		else if (matchObj.isOpening && matchObj.isDefault) {
+// 			default_group.push(std::get<0>(match));
+// 			group_stack.insert(std::get<0>(match));
+// 		}
+//
+// 		// Then call the first Match
+// 		writer(std::get<1>(match)->str(), std::get<0>(match));
+// 		// Advance input
+// 		input_begin = match_end;
+// 	}
+//
+// 	writer(std::string(input_begin, input.cend()), "");
+// }
 
 Highlighter HighlighterEngine::getHighlighter(std::string language) {
 	addLanguage(language);
@@ -317,7 +351,7 @@ Highlighter HighlighterEngine::getHighlighter(std::string language) {
 
 void Highlighter::operator()(std::string input, std::function<void(std::string, const std::string&)> writer) {
 	string_iterator input_begin = input.begin();
-	std::set<group_regex_iterator, std::function<bool(const group_regex_iterator &, const group_regex_iterator &)>>
+	std::multiset<group_regex_iterator, std::function<bool(const group_regex_iterator &, const group_regex_iterator &)>>
 		matches([](const group_regex_iterator & l, const group_regex_iterator & r) {
 		return std::get<1>(l)->position() < std::get<1>(r)->position();
 	});
@@ -343,29 +377,35 @@ void Highlighter::operator()(std::string input, std::function<void(std::string, 
 
 		auto & matchObj = std::get<2>(match);
 
-		if (matchObj.activeWhen != nullptr && !isSubset(group_stack, *matchObj.activeWhen)) {
+		if (matchObj.activeWhen != nullptr && !anyIsSubset(group_stack, *matchObj.activeWhen)) {
 			// This match does not apply because the needed groups are not active
 			continue;
 		}
-		if (!matchObj.isClosing && matchObj.activeWhen == nullptr && group_stack.size() != 0) {
+		if (!matchObj.isClosing && matchObj.activeWhen == nullptr && group_stack_sum != 0) {
 			// This match does not apply because it requires no groups to be active
 			continue;
 		}
-		if (matchObj.isClosing && group_stack.count(std::get<0>(match)) == 0) {
+		if (matchObj.isClosing && (group_stack.count(std::get<0>(match)) == 0 || group_stack[std::get<0>(match)] == 0)) {
 			// Closing match but not open
 			continue;
 		}
 		std::string debug = std::string(input_begin, match_begin);
-		writer(std::string(input_begin, match_begin), default_group.empty() ? "" : default_group.top());
+		writer(std::string(input_begin, match_begin), default_group.empty() ? "" : default_group.top().first);
 
 		if (matchObj.isClosing) {
-			default_group.pop();
-			group_stack.erase(std::get<0>(match));
+			if (group_stack[std::get<0>(match)] == 0) throw std::runtime_error("Closing a tag that was never opened");
+			group_stack[std::get<0>(match)]--; // Should not get below 0
+			group_stack_sum--;
+
+			if (default_group.size() != 0 && default_group.top().second == group_stack[std::get<0>(match)])
+				default_group.pop();
 		}
 		else if (matchObj.isOpening) {
+			if (group_stack.count(std::get<0>(match)) == 0) group_stack[std::get<0>(match)] = 0;
+			group_stack[std::get<0>(match)]++;
+			group_stack_sum++;
 			if (matchObj.isDefault)
-				default_group.push(std::get<0>(match));
-			group_stack.insert(std::get<0>(match));
+				default_group.emplace(std::get<0>(match), group_stack[std::get<0>(match)] - 1);
 		}
 
 		// Then call the first Match
@@ -374,5 +414,6 @@ void Highlighter::operator()(std::string input, std::function<void(std::string, 
 		input_begin = match_end;
 	}
 
-	writer(std::string(input_begin, input.cend()), default_group.empty() ? "" : default_group.top());
+	if (std::distance(input_begin, input.cend()) > 0) // If there is still text to process
+		writer(std::string(input_begin, input.cend()), default_group.empty() ? "" : default_group.top().first);
 }

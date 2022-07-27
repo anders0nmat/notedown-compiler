@@ -165,9 +165,8 @@ void NotedownCompiler::addFromFile(std::string filename, size_t order) {
 	p.parseDocument();
 	p.getDocument()->commands.flags["_filename"] = filename;
 
-	mtx_documents.lock();
+	std::unique_lock<std::mutex> lck(mtx_documents);
 	documents[order] = std::move(p.getDocument());
-	mtx_documents.unlock();
 }
 
 void NotedownCompiler::addFile(std::vector<std::string> & filenames, bool multithread) {

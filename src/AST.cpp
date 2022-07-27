@@ -1082,7 +1082,7 @@ void ASTCodeBlock::process(ASTProcess step, ASTRequestFunc request, ASTRequestMo
 	_ASTBlockElement::process(step, request, modFunc);
 }
 
-void ASTCodeBlock::addCommand(std::unique_ptr<ASTInlineText> & e) {
+void ASTCodeBlock::addCommandFrom(std::unique_ptr<ASTInlineText> & e) {
 	command = std::move(e);
 	if (this->command != nullptr)
 		command->parent = this;

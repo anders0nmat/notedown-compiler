@@ -1,5 +1,6 @@
 # TODO make this a makefile replacement because i dont understand sh*t about makefiles
 import os
+from sys import argv
 import time
 import pymake
 
@@ -10,19 +11,27 @@ builds = pymake.project_path(r"build/")
 src = pymake.project_path(r"src/")
 output = pymake.project_path(r"bin/notedown.exe")
 
-cc = r"g++"
-ccflags = r"-fdiagnostics-color=always -O0 -std=c++20 -g"
+cc = r"clang++"
+ccflags = r"-pthread -Werror -Wall -Wpedantic -fdiagnostics-color=always -O1 -std=c++20 -g"
 
 targets = pymake.get_targets_folder(
 	src, builds,
 	filter=lambda e : e.endswith(".cpp"),
 	target_name=lambda e : e + ".o")
 
+print("\n", "-" * 10, "\n")
+
 start_time = time.time()
 
 pymake.make_dir([builds, output])
 
 # Rebuild all objs
+if pymake.cmd_target() == "fresh":
+	print("Fresh compile. Deleting stale object files")
+	for _, t in targets:
+		if os.path.exists(t):
+			os.remove(t)
+
 objs = pymake.rebuild(targets, f"{cc} {ccflags} -c {{0}} -o {{1}}")
 
 # Rebuild exe

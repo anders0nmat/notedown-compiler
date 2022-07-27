@@ -14,11 +14,12 @@ struct SyntaxMatch {
     bool isClosing;
     bool isDefault;
 
-    std::shared_ptr<std::unordered_set<std::string>> activeWhen;
+    // First level is ORed, second level is ANDed
+    std::shared_ptr<std::vector<std::unordered_set<std::string>>> activeWhen;
 
     SyntaxMatch(std::string match) : match(match) {}
     SyntaxMatch(std::string match, bool isOpening, bool isClosing, 
-        bool isDefault, std::shared_ptr<std::unordered_set<std::string>> & activeWhen) 
+        bool isDefault, std::shared_ptr<std::vector<std::unordered_set<std::string>>> & activeWhen) 
         : match(match), isOpening(isOpening), isClosing(isClosing), 
         isDefault(isDefault), activeWhen(activeWhen) {}
 };
@@ -43,8 +44,9 @@ struct SyntaxLanguage {
 class Highlighter {
 private:
     std::shared_ptr<SyntaxLanguage> lang;
-    std::stack<std::string> default_group;
-	std::unordered_set<std::string> group_stack;
+    std::stack<std::pair<std::string, int>> default_group;
+	std::unordered_map<std::string, int> group_stack;
+    unsigned int group_stack_sum = 0;
 public:
     Highlighter(std::shared_ptr<SyntaxLanguage> lang) : lang(lang) {}
 
@@ -76,7 +78,7 @@ public:
 
     // std::string highlight(std::string input, std::string language, std::function<void(std::string&, const std::string&, const std::string&)> processor);
     
-    void highlight_callback(std::string input, std::string language, std::function<void(std::string, const std::string&)> writer);
+    // void highlight_callback(std::string input, std::string language, std::function<void(std::string, const std::string&)> writer);
 
     Highlighter getHighlighter(std::string language);
 };

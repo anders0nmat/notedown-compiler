@@ -2,6 +2,7 @@
 .vscode-light {
 	--text: #000000;
 	--text-code: #000000;
+	--text-code-mild: #a3a3a3;
 	--text-hl: #000000;
 	--text-link: #0077ff;
 	--text-visited: #c13bff;
@@ -35,6 +36,7 @@
 .vscode-dark {
 	--text: #bfbfbf;
 	--text-code: #cfcfcf;
+	--text-code-mild: #5a5a5a;
 	--text-hl: #afafaf;
 	--text-link: #3d8be6;
 	--text-visited: #a069df;
@@ -69,6 +71,7 @@
 	:root {
 		--text: #bfbfbf;
 		--text-code: #cfcfcf;
+		--text-code-mild: #5a5a5a;
 		--text-hl: #afafaf;
 		--text-link: #3d8be6;
 		--text-visited: #a069df;
@@ -117,7 +120,7 @@ body {
 	color: var(--text);
 	font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 	background-color: var(--bg);
-	line-height: 1.5em;
+	line-height: 1.4em;
 	font-size: 16px;
 }
 
@@ -181,6 +184,22 @@ pre > code {
 	width:100%;
 	tab-size: 4;
 	padding: 0.8em 1.2em;
+	position: relative;
+	line-height: 1.4em;
+}
+
+pre > code[syntax-lang] {
+	padding-top: 1.8em;
+}
+
+pre > code[syntax-lang]::before {
+	content: attr(syntax-lang);
+	font-style: italic;
+	position: absolute;
+	top: 0;
+	right: 0;
+	padding: 0.375em 1em;
+	color: var(--text-code-mild);
 }
 
 blockquote {
@@ -323,37 +342,4 @@ details > summary * {
 .nd-task-list-item > p > input[type="checkbox"] {
 	position: relative;
 	margin-left: -20px;
-}
-
-.nd-syntax-literal-const {
-	color: var(--syntax-const);
-}
-
-.nd-syntax-keyword-def {
-	color: var(--syntax-definition);
-}
-
-.nd-syntax-keyword-other {
-	color: var(--syntax-control);
-}
-
-.nd-syntax-comment {
-	font-style: italic;
-	color: var(--syntax-comment);
-}
-
-.nd-syntax-keyword-flow {
-	color: var(--syntax-flow);
-}
-
-.nd-syntax-literal-num {
-	color: var(--syntax-number);
-}
-
-.nd-syntax-literal-str {
-	color: var(--syntax-string);
-}
-
-.nd-syntax-type {
-	color: var(--syntax-type);
 }

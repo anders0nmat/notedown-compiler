@@ -48,7 +48,7 @@ protected:
 
 	void finishBlock(Parser * lex) {
 		if (handler != nullptr && content != nullptr) {
-			std::unique_ptr<_ASTElement> e = std::move(handler->finish(lex));
+			std::unique_ptr<_ASTElement> e = handler->finish(lex);
 			content->addElement(e);
 		}
 	}

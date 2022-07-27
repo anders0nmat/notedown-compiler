@@ -5,7 +5,7 @@ extends basic-comments
 # Searches for "basic-comments.nd-lang" in the same folder
 
 # Defines which languages are affected by this file
-matches py python p
+matches __example
 
 # Here a scope is defined by a name, later added as class to html and a type
 
@@ -86,6 +86,9 @@ in-class-name when class-name
 # END NEW DEFAULTS
 
 # Example
+
+keyword when a & b c& d e &f
+
 keyword
   ^\s*\bdef\b
   \breturn\b

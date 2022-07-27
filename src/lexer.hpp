@@ -45,7 +45,9 @@ public:
 	/*
 		Gets the token the next char in input belongs to
 	*/
-	Token peektok();
+	inline Token peektok() {
+		return peektok(_lastChar);
+	}
 
 	/*
 		Gets the next char in input

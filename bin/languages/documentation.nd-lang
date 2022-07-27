@@ -1,46 +1,16 @@
 # Adds some styling to comments
 
-doc-emphazise when comment
+doc-emphazise when comment comment-line comment-block
 	\*.*$
 
-doc-highlight when comment
+doc-highlight when comment comment-line comment-block
 	:.*$
 
-doc-warning when comment
+doc-warning when comment comment-line comment-block
 	\?.*$
 
-doc-todo when comment
-	TODO\b.*$
-
-doc-error when comment
-	!.*$
-
-doc-emphazise when comment-line
-	\*.*$
-
-doc-highlight when comment-line
-	:.*$
-
-doc-warning when comment-line
-	\?.*$
-
-doc-todo when comment-line
+doc-todo when comment comment-line comment-block
 	\bTODO\b.*$
 
-doc-error when comment-line
-	!.*$
-
-doc-emphazise when comment-block
-	\*.*$
-
-doc-highlight when comment-block
-	:.*$
-
-doc-warning when comment-block
-	\?.*$
-
-doc-todo when comment-block
-	\bTODO\b.*$
-
-doc-error when comment-block
+doc-error when comment comment-line comment-block
 	!.*$

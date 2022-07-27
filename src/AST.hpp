@@ -140,7 +140,7 @@ public:
 template<class cl>
 class _ASTListElement : virtual public _ASTElement {
 protected:
-	std::string className() {return "_ASTListElement";}
+	std::string className() override {return "_ASTListElement";}
 
 	void _consume(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) override {
 		for (auto & e : elements) {
@@ -252,7 +252,7 @@ typedef _ASTListElement<_ASTElement> _ASTBlockElement;
 */
 class _ASTInlineElement : virtual public _ASTElement {
 protected:
-	std::string className() {return "_ASTInlineElement";}
+	std::string className() override {return "_ASTInlineElement";}
 
 	void _consume(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) override;
 public:
@@ -269,7 +269,7 @@ public:
 
 class ASTCommandContainer : public _ASTInlineElement {
 protected:
-	std::string className() {return "ASTCommandContainer";}
+	std::string className() override {return "ASTCommandContainer";}
 
 	std::unique_ptr<_ASTElement> content;
 
@@ -288,7 +288,7 @@ public:
 */
 class ASTInlineText : public _ASTInlineElement, public _ASTListElement<_ASTInlineElement> {
 protected:
-	std::string className() {return "ASTInlineText";}
+	std::string className() override {return "ASTInlineText";}
 
 	void _consume(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) override;
 public:
@@ -306,7 +306,7 @@ public:
 */
 class ASTPlainText : public _ASTInlineElement {
 protected:
-	std::string className() {return "ASTPlainText";}
+	std::string className() override {return "ASTPlainText";}
 public:
 	std::string content;
 
@@ -329,7 +329,7 @@ public:
 */
 class ASTLinebreak : public _ASTInlineElement {
 protected:
-	std::string className() {return "ASTLinebreak";}
+	std::string className() override {return "ASTLinebreak";}
 public:
 	ASTLinebreak() {}
 
@@ -343,7 +343,7 @@ public:
 */
 class ASTTextModification : public _ASTInlineElement {
 protected:
-	std::string className() {return "ASTTextModification";}
+	std::string className() override {return "ASTTextModification";}
 
 	char symbol = 0;
 	std::unique_ptr<_ASTInlineElement> content;
@@ -358,7 +358,7 @@ public:
 
 	bool isEmpty() override;
 
-	std::string toJson();
+	std::string toJson() override;
 
 	std::string getHtml(ASTRequestFunc request) override;
 };
@@ -368,7 +368,7 @@ public:
 */
 class ASTEmoji : public _ASTInlineElement {
 protected:
-	std::string className() {return "ASTEmoji";}
+	std::string className() override {return "ASTEmoji";}
 
 	std::string shortcode;
 public:
@@ -377,7 +377,7 @@ public:
 
 	bool isEmpty() override;
 
-	std::string toJson();
+	std::string toJson() override;
 
 	std::string getHtml(ASTRequestFunc request) override;
 };
@@ -387,7 +387,7 @@ public:
 */
 class ASTModifier : public _ASTInlineElement {
 protected:
-	std::string className() {return "ASTModifier";}
+	std::string className() override {return "ASTModifier";}
 public:
 	std::string url;
 	std::unique_ptr<ASTInlineText> content;
@@ -403,7 +403,7 @@ public:
 
 	bool isEmpty() override;
 
-	std::string toJson();
+	std::string toJson() override;
 };
 
 /*
@@ -411,7 +411,7 @@ public:
 */
 class ASTLink : public ASTModifier {
 protected:
-	std::string className() {return "ASTLink";}
+	std::string className() override {return "ASTLink";}
 
 	void _resolve(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) override;
 public:
@@ -425,7 +425,7 @@ public:
 */
 class ASTImage : public ASTModifier {
 protected:	
-	std::string className() {return "ASTImage";}
+	std::string className() override {return "ASTImage";}
 
 	void _resolve(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) override;
 public:
@@ -441,7 +441,7 @@ public:
 */
 class ASTFootnote : public ASTModifier {
 protected:
-	std::string className() {return "ASTFootnote";}
+	std::string className() override {return "ASTFootnote";}
 
 	void _resolve(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) override;
 public:
@@ -455,7 +455,7 @@ public:
 */
 class ASTHeadingLink : public ASTModifier {
 protected:
-	std::string className() {return "ASTHeadingLink";}
+	std::string className() override {return "ASTHeadingLink";}
 public:
 	using ASTModifier::ASTModifier;
 
@@ -467,7 +467,7 @@ public:
 */
 class ASTReplace : public ASTModifier {
 protected:
-	std::string className() {return "ASTReplace";}
+	std::string className() override {return "ASTReplace";}
 public:
 	using ASTModifier::ASTModifier;
 
@@ -481,7 +481,7 @@ public:
 */
 class ASTStyled : public ASTModifier {
 protected:
-	std::string className() {return "ASTStyled";}
+	std::string className() override {return "ASTStyled";}
 public:
 	using ASTModifier::ASTModifier;
 
@@ -517,7 +517,7 @@ public:
 */
 class ASTDocument : public _ASTBlockElement {
 protected:
-	std::string className() {return "ASTDocument";}
+	std::string className() override {return "ASTDocument";}
 public:
 	std::unordered_map<std::string, _ASTElement *> iddef;
 
@@ -529,7 +529,7 @@ public:
 */
 class ASTIdDefinition : public _ASTBlockElement {
 protected:
-	std::string className() {return "ASTIdDefinition";}
+	std::string className() override {return "ASTIdDefinition";}
 
 	void _register(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) override;
 public:
@@ -569,7 +569,7 @@ public:
 
 	bool isEmpty() override;
 
-	std::string toJson();
+	std::string toJson() override;
 
 	std::string getHtml(ASTRequestFunc request) override;
 };
@@ -591,7 +591,7 @@ public:
 */
 class ASTParagraph : public _ASTBlockElement {
 protected:
-	std::string className() {return "ASTParagraph";}
+	std::string className() override {return "ASTParagraph";}
 public:
 	std::string getHtml(ASTRequestFunc request) override;
 };
@@ -601,7 +601,7 @@ public:
 */
 class ASTBlockquote : public _ASTBlockElement {
 protected:
-	std::string className() {return "ASTBlockquote";}
+	std::string className() override {return "ASTBlockquote";}
 public:
 	bool centered;
 
@@ -618,7 +618,7 @@ public:
 */
 class ASTListElement : public _ASTBlockElement {
 protected:
-	std::string className() {return "ASTListElement";}
+	std::string className() override {return "ASTListElement";}
 public:
 	unsigned long index;
 
@@ -634,7 +634,7 @@ public:
 */
 class ASTUnorderedList : public _ASTListElement<ASTListElement> {
 protected:
-	std::string className() {return "ASTUnorderedList";}
+	std::string className() override {return "ASTUnorderedList";}
 public:
 	std::string getHtml(ASTRequestFunc request) override;
 };
@@ -644,7 +644,7 @@ public:
 */
 class ASTOrderedList : public _ASTListElement<ASTListElement> {
 protected:
-	std::string className() {return "ASTOrderedList";}
+	std::string className() override {return "ASTOrderedList";}
 public:
 	std::string getHtml(ASTRequestFunc request) override;
 };
@@ -654,7 +654,7 @@ public:
 */
 class ASTCodeBlock : public _ASTBlockElement {
 protected:
-	std::string className() {return "ASTCodeBlock";}
+	std::string className() override {return "ASTCodeBlock";}
 
 	void _register(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) override;
 public:
@@ -665,7 +665,7 @@ public:
 
 	void process(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) override;
 
-	void addCommand(std::unique_ptr<ASTInlineText> & e);
+	void addCommandFrom(std::unique_ptr<ASTInlineText> & e);
 
 	std::string toJson() override;
 
@@ -677,7 +677,7 @@ public:
 */
 class ASTInfoBlock : public _ASTBlockElement {
 protected:
-	std::string className() {return "ASTInfoBlock";}
+	std::string className() override {return "ASTInfoBlock";}
 public:
 	std::string type;
 	bool sym;
@@ -695,7 +695,7 @@ public:
 */
 class ASTFootnoteBlock : public _ASTBlockElement {
 protected:
-	std::string className() {return "ASTFootnoteBlock";}
+	std::string className() override {return "ASTFootnoteBlock";}
 
 	
 	void _register(ASTProcess step, ASTRequestFunc request, ASTRequestModFunc modFunc) override;
@@ -714,10 +714,10 @@ public:
 */
 class ASTCollapseBlock : public _ASTBlockElement {
 protected:
-	std::string className() {return "ASTCollapseBlock";}
+	std::string className() override {return "ASTCollapseBlock";}
 public:
-	std::unique_ptr<ASTInlineText> summary;
 	bool isOpen;
+	std::unique_ptr<ASTInlineText> summary;
 
 	ASTCollapseBlock() {}
 	ASTCollapseBlock(bool isOpen, std::unique_ptr<ASTInlineText> summary) : isOpen(isOpen), summary(std::move(summary)) {

@@ -102,45 +102,45 @@ std::unique_ptr<ASTUnorderedList> tocLevel(std::vector<ASTHeading *> & outline, 
 			index++;
 		}
 		else {
-			std::unique_ptr<_ASTElement> elem = std::move(tocLevel(outline, index));
+			std::unique_ptr<_ASTElement> elem = tocLevel(outline, index);
 			list->back()->addElement(elem);
 		}
 	}
-	return std::move(list);
+	return list;
 }
 
 const std::string COMPILER_VERSION = "v1.4";
 const std::string DEFAULT_STYLE_PATH = "default.css";
-const std::string CONSOLE_HELP = 
-"\t-?\n"
-"\t-h\n"
-"\t-help\t: Prints this help\n"
-"\t-nom\n"
-"\t-nomultithread\t: Disables the multithread compiling of files\n"
-"\t-sd\n"
-"\t-styledoc\n"
-"\t-styledocument\t: Include styling in html instead of reflinks\n" 
-"\t-o\n"
-"\t-out\t: Defines the output file\n"
-"\t-s\n"
-"\t-style\t: Defines css style sheets to use\n"
-"\t-nods\n"
-"\t-nodefaultstyle\t: Disables the default stylesheet\n"
-"\t-node\n"
-"\t-nodefaultemoji\t: Disables the default emoji LUTs\n"
-"\t-nod\n"
-"\t-nodefault\t: Disable default css and emoji LUT\n"
-"\t-q\n"
-"\t-quiet\t: Disables debug CLI Output\n"
-"\t-oc\n"
-"\t-outconsole\t: Result will be outputted to console\n"
-"\t-r\n"
-"\t-raw\t: Output only raw html, does not include html-neccessary headers"
-"\t-nodsy\n"
-"\t-nodefaultsyntax\t: Exclude default syntax files"
-"\t-sy\n"
-"\t-syntax\t: Add syntax file"
-;
+const std::string CONSOLE_HELP =
+R"--(  -?
+  -h
+  -help            : Prints this help
+  -nom
+  -nomultithread   : Disables the multithread compiling of files
+  -sd
+  -styledoc
+  -styledocument   : Include styling in html instead of reflinks"
+  -o
+  -out             : Defines the output file
+  -s
+  -style           : Defines css style sheets to use
+  -nods
+  -nodefaultstyle  : Disables the default stylesheet
+  -node
+  -nodefaultemoji  : Disables the default emoji LUTs
+  -nod
+  -nodefault       : Disable default css and emoji LUT
+  -q
+  -quiet           : Disables debug CLI Output
+  -oc
+  -outconsole      : Result will be outputted to console
+  -r
+  -raw             : Output only raw html, does not include html-neccessary headers
+  -nodsy
+  -nodefaultsyntax : Exclude default syntax files
+  -sy
+  -syntax          : Add syntax file
+)--";
 
 std::vector<std::string> files, styles, emoji, syntax;
 std::unordered_map<std::string, std::string> args;
@@ -168,7 +168,6 @@ int main(int argc, const char *argv[]) {
 		}
 		std::string arg = argv[i];
 		
-
 		if (arg == "-style" || arg == "-s") {
 			if (i + 1 < argc) {
 				styles.push_back(argv[i + 1]);
@@ -236,30 +235,47 @@ int main(int argc, const char *argv[]) {
 	}
 
 	if (!flagSet({"-nods", "-nodefaultstyle"})) {
-		styles.push_back(exe_path + "\\" + "default.css");
-		styles.push_back(exe_path + "\\" + "syntax.css");
+		for (auto & p : std::filesystem::recursive_directory_iterator(std::filesystem::path(exe_path) / "styles")) {
+			if (!p.is_regular_file()) continue;
+			if (p.path().extension() != ".css") continue;
+
+			styles.push_back(p.path().string());
+		}
 	}
 
-	if (!flagSet({"-node", "-nodefaultemoji"}))
-		emoji.insert(emoji.end(), {
-			exe_path + "/emoji_lut/unicode-14/activities.nd-emoji",
-			exe_path + "/emoji_lut/unicode-14/animals-nature.nd-emoji",
-			exe_path + "/emoji_lut/unicode-14/flags.nd-emoji",
-			exe_path + "/emoji_lut/unicode-14/food-drink.nd-emoji",
-			exe_path + "/emoji_lut/unicode-14/objects.nd-emoji",
-			exe_path + "/emoji_lut/unicode-14/people-body.nd-emoji",
-			exe_path + "/emoji_lut/unicode-14/smileys-emotion.nd-emoji",
-			exe_path + "/emoji_lut/unicode-14/symbols.nd-emoji",
-			exe_path + "/emoji_lut/unicode-14/travel-places.nd-emoji"
-		});
-	
-	if (!flagSet({"-nodsy", "-nodefaultsyntax"}))
-		syntax.insert(syntax.end(), {
-			exe_path + "/languages/python.nd-lang"
-		});
+	if (!flagSet({"-node", "-nodefaultemoji"})) {
+		for (auto & p : std::filesystem::recursive_directory_iterator(std::filesystem::path(exe_path) / "emojis")) {
+			if (!p.is_regular_file()) continue;
+			if (p.path().extension() != ".nd-emoji") continue;
 
+			emoji.push_back(p.path().string());
+		}
 
-	
+		// emoji.insert(emoji.end(), {
+		// 	exe_path + "/emoji_lut/unicode-14/activities.nd-emoji",
+		// 	exe_path + "/emoji_lut/unicode-14/animals-nature.nd-emoji",
+		// 	exe_path + "/emoji_lut/unicode-14/flags.nd-emoji",
+		// 	exe_path + "/emoji_lut/unicode-14/food-drink.nd-emoji",
+		// 	exe_path + "/emoji_lut/unicode-14/objects.nd-emoji",
+		// 	exe_path + "/emoji_lut/unicode-14/people-body.nd-emoji",
+		// 	exe_path + "/emoji_lut/unicode-14/smileys-emotion.nd-emoji",
+		// 	exe_path + "/emoji_lut/unicode-14/symbols.nd-emoji",
+		// 	exe_path + "/emoji_lut/unicode-14/travel-places.nd-emoji"
+		// });
+	}
+
+	if (!flagSet({"-nodsy", "-nodefaultsyntax"})) {
+		for (auto & p : std::filesystem::recursive_directory_iterator(std::filesystem::path(exe_path) / "languages")) {
+			if (!p.is_regular_file()) continue;
+			if (p.path().extension() != ".nd-lang") continue;
+
+			syntax.push_back(p.path().string());
+		}
+		// syntax.insert(syntax.end(), {
+		// 	exe_path + "/languages/python.nd-lang"
+		// });
+	}
+
 
 	// ------------------------------ //
 	// ------- COMPILER START ------- //
@@ -314,11 +330,11 @@ int main(int argc, const char *argv[]) {
 
 		std::unique_ptr<ASTUnorderedList> list = std::make_unique<ASTUnorderedList>();
 
-		int currLevel;
+		//int currLevel;
 		size_t index = 0;
 
 		while (index < outline.size()) {
-			currLevel = outline[index]->level;
+			//currLevel = outline[index]->level;
 			std::unique_ptr<ASTUnorderedList> l = tocLevel(outline, index);
 			list->addElements(l->elements);
 		}

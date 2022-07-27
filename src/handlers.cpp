@@ -380,7 +380,7 @@ HandlerReturn CodeHandler::handle(Parser * lex) {
 		lex->gettok(); // Consume ```
 		lex->gettok(); // Consume newline
 		std::unique_ptr<ASTCodeBlock> code = std::make_unique<ASTCodeBlock>(lang);
-		code->addCommand(firstLine);
+		code->addCommandFrom(firstLine);
 		for (auto & e : content)
 			code->addElement(std::move(e));
 		return make_result(std::move(code), true);
@@ -580,12 +580,10 @@ HandlerReturn IdDefinitionHandler::handle(Parser * lex) {
 		lex->gettok(); // Consume :
 		lex->gettok(); // Consume Spaces
 
-		std::string url;
-		std::string command;
+		std::string url, command;
 		std::unique_ptr<_ASTElement> e;
 		std::unique_ptr<ASTInlineText> t;
 		std::unique_ptr<ASTParagraph> p;
-		bool inQuote;
 
 		switch (type) {
 			case '(':
@@ -596,7 +594,7 @@ HandlerReturn IdDefinitionHandler::handle(Parser * lex) {
 				return make_result(content, true);
 			case '{':
 				// <Commands>
-				std::tie(command, success) = lex->readUntil([&inQuote](Parser * lex) {
+				std::tie(command, success) = lex->readUntil([](Parser * lex) {
 					return false;
 				});
 				content = std::make_unique<ASTIdDefinition>(id, "", type);

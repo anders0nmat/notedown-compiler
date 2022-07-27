@@ -1,4 +1,6 @@
 import os
+from sys import argv
+import sys
 import time
 
 # 0 : No output at all
@@ -6,6 +8,9 @@ import time
 # 2 : Output if anything happened
 verbose_level = 0
 rootdir = r""
+
+def cmd_target():
+	return argv[1] if len(argv) >= 2 else ""
 
 def project_path(path):
 	"""
@@ -50,7 +55,11 @@ def build(target: tuple[str, str] | list[tuple[str, str]], command: str):
 	for src, build in target:
 		if isinstance(src, str):
 			if os.path.exists(src):
-				os.system(command.format(f'"{src}"', f'"{build}"'))
+				print("Executing:", command.format(f'"{src}"', f'"{build}"'), end="")
+				exit_code = os.system(command.format(f'"{src}"', f'"{build}"'))
+				if exit_code != 0:
+					print("Build Command failed, build aborted.")
+					sys.exit(-1)
 				built_targets.append(build)
 			elif verbose_level > 0: print("Source does not exist:", src)
 		elif isinstance(src, list):
@@ -58,7 +67,11 @@ def build(target: tuple[str, str] | list[tuple[str, str]], command: str):
 			for path in src:
 				if not os.path.exists(path): break
 			else:
-				os.system(command.format(' '.join(paths), f'"{build}"'))
+				print("Executing:", command.format(' '.join(paths), f'"{build}"'), end="")
+				exit_code = os.system(command.format(' '.join(paths), f'"{build}"'))
+				if exit_code != 0:
+					print("Build Command failed, build aborted.")
+					sys.exit(-1)
 				built_targets.append(build)
 				continue
 			if verbose_level > 0: print("Source does not exist:", src)
@@ -75,7 +88,7 @@ def rebuild(target: tuple[str, str] | list[tuple[str, str]], command: str):
 	built_targets = []
 	for src, dest in target:
 		if not os.path.exists(dest) or not is_newer(dest, src):
-			if verbose_level > 0: print("recompiling", dest, end="", flush=True)
+			if verbose_level > 0: print("recompiling", dest)
 			start_time = time.time()
 			build((src, dest), command)
 			elapsed = (time.time() - start_time) * 1000
